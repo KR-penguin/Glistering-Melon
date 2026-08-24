@@ -34,7 +34,7 @@
     <a href="#value" style="white-space: nowrap;">핵심 가치</a>
     <a href="#ai" style="white-space: nowrap;">AI 관리</a>
     <a href="#price" style="white-space: nowrap;">요금</a>
-    <button type="button" class="btn btn-primary">1분 만에 서버 열기</button>
+    <button type="button" class="btn btn-primary" onClick="{{ openModal }}">1분 만에 서버 열기</button>
   </nav>
 
   <div style="max-width: 1200px; margin: 0 auto; padding: 0 clamp(20px, 5vw, 72px);">
@@ -49,7 +49,7 @@
 서버 이름만 적으면 세팅 완료. 관리는 AI가, 회선은 창원에서.
       </p>
       <div style="display: flex; gap: var(--space-3); flex-wrap: wrap; margin-top: 28px;">
-        <button type="button" class="btn btn-primary">무료로 서버 만들기</button>
+        <button type="button" class="btn btn-primary" onClick="{{ openModal }}">무료로 서버 만들기</button>
         <button type="button" class="btn btn-ghost">요금 보기</button>
       </div>
       <p style="font-size: 13px; line-height: 20px; letter-spacing: 0.06em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 65%, transparent); margin: 20px 0 0;">약정 없음 · 언제든 해지</p>
@@ -106,9 +106,9 @@
 
     <section id="ai" data-split style="display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 28px clamp(24px, 5vw, 96px); align-items: center; padding: 56px 0 84px;">
       <div>
-        <span style="display: block; font-size: 13px; line-height: 14px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent-700); margin: 0 0 14px;">AI 운영 리포트</span>
-        <h2 class="kr-h" style="font-size: 32px; line-height: 42px; letter-spacing: -0.025em; margin: 0;">무슨 일이 있었는지, 사람 말로</h2>
-        <p style="font-size: 15.5px; line-height: 28px; color: color-mix(in srgb, var(--color-text) 78%, transparent); margin: 20px 0 0; max-width: 48ch;">“어제 밤 2시에 청크 오류로 멈춰서 1분 만에 재시작했고, 직전 백업으로 마을은 그대로입니다.” 로그 대신 이런 문장을 받습니다. 궁금한 건 채팅으로 물어보면 됩니다.</p>
+        <span style="display: block; font-size: 13px; line-height: 14px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent-700); margin: 0 0 14px;">AI 자동 명령 실행</span>
+        <h2 class="kr-h" style="font-size: 32px; line-height: 42px; letter-spacing: -0.025em; margin: 0;">복잡한 명령어, AI가 대신 입력합니다</h2>
+        <p style="font-size: 15.5px; line-height: 28px; color: color-mix(in srgb, var(--color-text) 78%, transparent); margin: 20px 0 0; max-width: 48ch;">“철수 밴 시켜줘”, “오후 8시에 재시작해줘” — 채팅으로 부탁하면 AI가 콘솔에 명령어를 직접 입력해서 처리합니다. 화이트리스트 등록, 플러그인 설치, 월드 백업까지 전부 같은 방식입니다.</p>
         <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px;">
           <span class="tag tag-accent">자동 재시작</span>
           <span class="tag tag-outline">시간별 백업</span>
@@ -143,21 +143,21 @@
             <td>2 – 4명</td>
             <td>2GB / 15GB</td>
             <td style="font-feature-settings: 'tnum' 1;">4,900원</td>
-            <td><button type="button" class="btn btn-ghost">시작</button></td>
+            <td><button type="button" class="btn btn-ghost" onClick="{{ openModal }}">시작</button></td>
           </tr>
           <tr>
             <td style="font-weight: 700;">친구들 <span class="tag tag-accent" style="margin-left: 8px;">추천</span></td>
             <td>5 – 12명</td>
             <td>6GB / 50GB</td>
             <td style="font-feature-settings: 'tnum' 1;">11,900원</td>
-            <td><button type="button" class="btn btn-primary">시작</button></td>
+            <td><button type="button" class="btn btn-primary" onClick="{{ openModal }}">시작</button></td>
           </tr>
           <tr>
             <td style="font-weight: 700;">커뮤니티</td>
             <td>13 – 40명</td>
             <td>16GB / 150GB</td>
             <td style="font-feature-settings: 'tnum' 1;">29,900원</td>
-            <td><button type="button" class="btn btn-ghost">시작</button></td>
+            <td><button type="button" class="btn btn-ghost" onClick="{{ openModal }}">시작</button></td>
           </tr>
         </tbody>
       </table>
@@ -192,14 +192,126 @@
     </footer>
   </div>
 
+  <sc-if value="{{ modalOpen }}" hint-placeholder-val="{{ false }}">
+  <div class="dialog-backdrop" style="z-index: 1000;" onClick="{{ closeModal }}">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="gm-dialog-title" onClick="{{ stopClick }}">
+
+      <sc-if value="{{ formVisible }}" hint-placeholder-val="{{ true }}">
+      <form onSubmit="{{ handleSubmit }}" style="display: flex; flex-direction: column; gap: var(--space-3);">
+        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+          <h3 id="gm-dialog-title" class="dialog-title kr-h" style="margin: 0;">서버 시작하기</h3>
+          <button type="button" class="btn btn-icon btn-ghost" onClick="{{ closeModal }}" aria-label="닫기" style="margin: -6px -6px 0 0;">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 3L13 13M13 3L3 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+
+        <p class="dialog-body" style="margin: 0; padding: 10px 12px; background: var(--color-accent-100); color: var(--color-accent-800); border-radius: var(--radius-md); opacity: 1;">아직 서비스 준비 중이라 지금 신청해 주셔도 서버가 바로 열리지는 않아요. 순서대로 이메일로 안내드릴게요.</p>
+
+        <div class="field">
+          <label for="gm-nickname">닉네임</label>
+          <input id="gm-nickname" class="input" type="text" required placeholder="서버에서 쓸 닉네임" value="{{ nickname }}" onChange="{{ setNickname }}">
+        </div>
+
+        <div class="field">
+          <label for="gm-email">이메일</label>
+          <input id="gm-email" class="input" type="email" required placeholder="you@example.com" value="{{ email }}" onChange="{{ setEmail }}">
+        </div>
+
+        <div class="field">
+          <label>결제 방법</label>
+          <div class="input" style="display: flex; flex-direction: column; gap: 2px; cursor: default; min-height: unset;">
+            <span style="font-weight: 600;">계좌입금</span>
+            <span class="text-muted" style="font-size: 12px;">입금 계좌: 경남은행 2070218854605</span>
+          </div>
+        </div>
+
+        <div class="dialog-actions">
+          <button type="button" class="btn btn-secondary" onClick="{{ closeModal }}">취소</button>
+          <button type="submit" class="btn btn-primary">사전 신청하기</button>
+        </div>
+      </form>
+      </sc-if>
+
+      <sc-if value="{{ submitted }}" hint-placeholder-val="{{ false }}">
+      <div style="display: flex; flex-direction: column; gap: var(--space-3);">
+        <h3 class="dialog-title kr-h" style="margin: 0;">신청 완료</h3>
+        <p class="dialog-body" style="margin: 0;">신청이 접수됐어요. 서비스 준비가 끝나는 대로, 입금 계좌 안내를 포함해 이메일로 알려드릴게요.</p>
+        <div class="dialog-actions">
+          <button type="button" class="btn btn-primary" onClick="{{ closeModal }}">닫기</button>
+        </div>
+      </div>
+      </sc-if>
+
+    </div>
+  </div>
+  </sc-if>
+
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;showPricing&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;showQuote&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1541411425342193764/YEyqv-mBWEi6q-8NowkeGKxnJees6oSWa3154WgUUhozEb6HwkP-clXuzVWlj3vu2pb2';
+
 class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { modalOpen: false, nickname: '', email: '', submitted: false };
+    this.openModal = this.openModal.bind(this);
+    this.closeModal = this.closeModal.bind(this);
+    this.setNickname = this.setNickname.bind(this);
+    this.setEmail = this.setEmail.bind(this);
+    this.handleSubmit = this.handleSubmit.bind(this);
+    this.stopClick = this.stopClick.bind(this);
+  }
+  openModal() {
+    this.setState({ modalOpen: true });
+  }
+  closeModal() {
+    this.setState({ modalOpen: false, nickname: '', email: '', submitted: false });
+  }
+  setNickname(e) {
+    this.setState({ nickname: e.target.value });
+  }
+  setEmail(e) {
+    this.setState({ email: e.target.value });
+  }
+  handleSubmit(e) {
+    e.preventDefault();
+    const nickname = this.state.nickname;
+    const email = this.state.email;
+    fetch(DISCORD_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        embeds: [{
+          title: '새 서버 신청',
+          color: 15478803,
+          fields: [
+            { name: '닉네임', value: nickname || '-', inline: true },
+            { name: '이메일', value: email || '-', inline: true },
+          ],
+        }],
+      }),
+    }).catch(() => {});
+    this.setState({ submitted: true });
+  }
+  stopClick(e) {
+    e.stopPropagation();
+  }
   renderVals() {
     return {
       showPricing: this.props.showPricing ?? true,
       showQuote: this.props.showQuote ?? true,
+      modalOpen: this.state.modalOpen,
+      submitted: this.state.submitted,
+      formVisible: !this.state.submitted,
+      nickname: this.state.nickname,
+      email: this.state.email,
+      openModal: this.openModal,
+      closeModal: this.closeModal,
+      setNickname: this.setNickname,
+      setEmail: this.setEmail,
+      handleSubmit: this.handleSubmit,
+      stopClick: this.stopClick,
     };
   }
 }
