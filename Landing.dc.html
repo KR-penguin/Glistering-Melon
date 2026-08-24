@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/modernist-9fa50175-89ec-4b1c-a7cb-72924a67d825/styles.css">
+<script src="_ds/modernist-9fa50175-89ec-4b1c-a7cb-72924a67d825/_ds_bundle.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;800&family=Noto+Sans+KR:wght@400;500;700;900&display=swap">
+<script src="./image-slot.js"></script>
+<style>
+  body { margin: 0; text-wrap: pretty; font-family: Archivo, "Noto Sans KR", sans-serif; word-break: keep-all; overflow-wrap: anywhere; }
+  .btn, .tag { white-space: nowrap; word-break: keep-all; flex: 0 0 auto; justify-content: flex-start; }
+  @media (max-width: 980px) { [data-feature] { grid-template-columns: 1fr !important; gap: 14px !important; } }
+  @media (max-width: 720px) { [data-stats] { grid-template-columns: repeat(2, 1fr) !important; justify-content: start !important; } [data-split] { grid-template-columns: 1fr !important; } }
+  a { color: var(--color-accent-700); text-decoration: none; }
+  a:hover { color: var(--color-accent); }
+  ::selection { background: var(--color-accent-200); }
+  .kr-h { font-family: Archivo, "Noto Sans KR", sans-serif; font-weight: 900; letter-spacing: -0.03em; }
+  .btn:focus-visible, a:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+</style>
+</helmet>
+
+<div style="background: var(--color-bg); color: var(--color-text); min-height: 100%;">
+
+  <nav class="nav" style="padding-inline: max(24px, calc((100% - 1200px) / 2 + 24px));">
+    <span class="nav-brand" style="letter-spacing: -0.02em; display: flex; align-items: center; gap: 10px;"><img src="uploads/pasted-1787187492354-0.png" alt="" style="width: 28px; height: 28px; image-rendering: pixelated;">GLISTERING MELON</span>
+    <a href="#value" style="white-space: nowrap;">핵심 가치</a>
+    <a href="#ai" style="white-space: nowrap;">AI 관리</a>
+    <a href="#price" style="white-space: nowrap;">요금</a>
+    <button type="button" class="btn btn-primary">1분 만에 서버 열기</button>
+  </nav>
+
+  <div style="max-width: 1200px; margin: 0 auto; padding: 0 clamp(20px, 5vw, 72px);">
+
+    <section style="padding: 112px 0 84px;">
+      <h1 class="kr-h" style="font-size: clamp(40px, 5.6vw, 78px); line-height: 1.08; margin: 0 0 0 -0.04em;">
+        <span style="display: block;">AI가 관리하고,</span>
+        <span style="display: block;">24시간 켜져 있는</span>
+        <span style="display: block;">마인크래프트 서버.</span>
+      </h1>
+      <p style="font-size: 17px; line-height: 28px; max-width: 54ch; margin: 32px 0 0; color: color-mix(in srgb, var(--color-text) 82%, transparent);">
+서버 이름만 적으면 세팅 완료. 관리는 AI가, 회선은 창원에서.
+      </p>
+      <div style="display: flex; gap: var(--space-3); flex-wrap: wrap; margin-top: 28px;">
+        <button type="button" class="btn btn-primary">무료로 서버 만들기</button>
+        <button type="button" class="btn btn-ghost">요금 보기</button>
+      </div>
+      <p style="font-size: 13px; line-height: 20px; letter-spacing: 0.06em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 65%, transparent); margin: 20px 0 0;">약정 없음 · 언제든 해지</p>
+    </section>
+
+    <hr style="height: 2px; border: 0; margin: 0; background: var(--color-divider);">
+
+    <section aria-label="숫자로 보는 서비스" style="padding: 70px 0;">
+      <div data-stats style="display: grid; grid-template-columns: repeat(3, auto); justify-content: space-around; gap: 42px 28px;">
+        <div>
+          <p class="kr-h" style="font-size: clamp(34px, 3.4vw, 48px); line-height: 56px; color: var(--color-accent); margin: 0 0 0 -0.045em; font-feature-settings: 'tnum' 1;">8ms</p>
+          <p style="font-size: 13px; line-height: 18px; letter-spacing: 0.08em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 70%, transparent); margin: 14px 0 0;">창원 리전 평균 핑</p>
+        </div>
+        <div>
+          <p class="kr-h" style="font-size: clamp(34px, 3.4vw, 48px); line-height: 56px; color: var(--color-accent); margin: 0 0 0 -0.045em; font-feature-settings: 'tnum' 1;">4,900원</p>
+          <p style="font-size: 13px; line-height: 18px; letter-spacing: 0.08em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 70%, transparent); margin: 14px 0 0;">월 시작 가격</p>
+        </div>
+        <div>
+          <p class="kr-h" style="font-size: clamp(34px, 3.4vw, 48px); line-height: 56px; color: var(--color-accent); margin: 0 0 0 -0.045em; font-feature-settings: 'tnum' 1;">0</p>
+          <p style="font-size: 13px; line-height: 18px; letter-spacing: 0.08em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 70%, transparent); margin: 14px 0 0;">외워야 할 명령어</p>
+        </div>
+      </div>
+    </section>
+
+    <hr style="height: 2px; border: 0; margin: 0; background: var(--color-divider);">
+
+    <section id="value" style="padding: 84px 0 70px;">
+      <span style="display: block; font-size: 13px; line-height: 14px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent-700); font-feature-settings: 'tnum' 1; margin: 0 0 42px;">네 가지 약속</span>
+
+      <div data-feature style="display: grid; grid-template-columns: minmax(64px, 140px) minmax(0, 380px) minmax(0, 1fr); gap: 28px clamp(24px, 4vw, 72px); align-items: baseline; padding: 42px 0;">
+        <p class="kr-h" style="font-size: 15px; line-height: 28px; margin: 0; font-feature-settings: 'tnum' 1;">01</p>
+        <h2 class="kr-h" style="font-size: 26px; line-height: 34px; letter-spacing: -0.02em; margin: 0;">서버 관리는 AI가 합니다</h2>
+        <p style="font-size: 15.5px; line-height: 28px; margin: 0; color: color-mix(in srgb, var(--color-text) 78%, transparent); max-width: 52ch;">램 부족, 플러그인 충돌, 새벽 다운 — AI가 알아서 처리하고 사람 말로 알려줍니다.</p>
+      </div>
+
+      <div data-feature style="display: grid; grid-template-columns: minmax(64px, 140px) minmax(0, 380px) minmax(0, 1fr); gap: 28px clamp(24px, 4vw, 72px); align-items: baseline; padding: 42px 0; border-top: 2px solid var(--color-divider);">
+        <p class="kr-h" style="font-size: 15px; line-height: 28px; margin: 0; font-feature-settings: 'tnum' 1;">02</p>
+        <h2 class="kr-h" style="font-size: 26px; line-height: 34px; letter-spacing: -0.02em; margin: 0;">창원에서 돌아갑니다</h2>
+        <p style="font-size: 15.5px; line-height: 28px; margin: 0; color: color-mix(in srgb, var(--color-text) 78%, transparent); max-width: 52ch;">해외 리전을 거치지 않는 국내 회선. 부산·대구·창원권에서 평균 8ms, 수도권에서도 20ms대입니다.</p>
+      </div>
+
+      <div data-feature style="display: grid; grid-template-columns: minmax(64px, 140px) minmax(0, 380px) minmax(0, 1fr); gap: 28px clamp(24px, 4vw, 72px); align-items: baseline; padding: 42px 0; border-top: 2px solid var(--color-divider);">
+        <p class="kr-h" style="font-size: 15px; line-height: 28px; margin: 0; font-feature-settings: 'tnum' 1;">03</p>
+        <h2 class="kr-h" style="font-size: 26px; line-height: 34px; letter-spacing: -0.02em; margin: 0;">친구들과 나눠 내는 가격</h2>
+        <p style="font-size: 15.5px; line-height: 28px; margin: 0; color: color-mix(in srgb, var(--color-text) 78%, transparent); max-width: 52ch;">월 4,900원부터. 넷이 나누면 한 사람에 1,225원, 편의점 커피 한 잔 값입니다. 약정도 없고, 안 쓰는 달은 잠깐 재워둘 수 있습니다.</p>
+      </div>
+
+      <div data-feature style="display: grid; grid-template-columns: minmax(64px, 140px) minmax(0, 380px) minmax(0, 1fr); gap: 28px clamp(24px, 4vw, 72px); align-items: baseline; padding: 42px 0; border-top: 2px solid var(--color-divider);">
+        <p class="kr-h" style="font-size: 15px; line-height: 28px; margin: 0; font-feature-settings: 'tnum' 1;">04</p>
+        <h2 class="kr-h" style="font-size: 26px; line-height: 34px; letter-spacing: -0.02em; margin: 0;">Paper? Spigot? 몰라도 됩니다</h2>
+        <p style="font-size: 15.5px; line-height: 28px; margin: 0; color: color-mix(in srgb, var(--color-text) 78%, transparent); max-width: 52ch;">서버 종류, 버전, 포트, 화이트리스트, 백업 주기 — 전부 맞춰서 세팅해 드립니다. 모드팩도 이름만 말하면 올라갑니다. 접속 주소 하나 받아서 친구들에게 붙여넣으면 끝.</p>
+      </div>
+    </section>
+
+    <section id="ai" data-split style="display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 28px clamp(24px, 5vw, 96px); align-items: center; padding: 56px 0 84px;">
+      <div>
+        <span style="display: block; font-size: 13px; line-height: 14px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent-700); margin: 0 0 14px;">AI 운영 리포트</span>
+        <h2 class="kr-h" style="font-size: 32px; line-height: 42px; letter-spacing: -0.025em; margin: 0;">무슨 일이 있었는지, 사람 말로</h2>
+        <p style="font-size: 15.5px; line-height: 28px; color: color-mix(in srgb, var(--color-text) 78%, transparent); margin: 20px 0 0; max-width: 48ch;">“어제 밤 2시에 청크 오류로 멈춰서 1분 만에 재시작했고, 직전 백업으로 마을은 그대로입니다.” 로그 대신 이런 문장을 받습니다. 궁금한 건 채팅으로 물어보면 됩니다.</p>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px;">
+          <span class="tag tag-accent">자동 재시작</span>
+          <span class="tag tag-outline">시간별 백업</span>
+          <span class="tag tag-outline">플러그인 충돌 롤백</span>
+          <span class="tag tag-outline">램 자동 조정</span>
+        </div>
+      </div>
+      <figure class="grayscale" style="margin: 0;">
+        <image-slot id="mc-shot" shape="rect" style="width: 100%; aspect-ratio: 951 / 665;" placeholder="서버 스크린샷 또는 관리 화면 이미지를 올려주세요"></image-slot>
+      </figure>
+    </section>
+
+    <hr style="height: 2px; border: 0; margin: 0; background: var(--color-divider);">
+
+    <sc-if value="{{ showPricing }}" hint-placeholder-val="{{ true }}">
+    <section id="price" style="padding: 70px 0 84px;">
+      <span style="display: block; font-size: 13px; line-height: 14px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent-700); margin: 0 0 28px;">요금</span>
+      <h2 class="kr-h" style="font-size: 32px; line-height: 42px; letter-spacing: -0.025em; margin: 0 0 42px;">인원수만 고르면 됩니다</h2>
+      <table class="table" style="width: 100%;">
+        <thead>
+          <tr>
+            <th style="text-align: left;">플랜</th>
+            <th style="text-align: left;">권장 인원</th>
+            <th style="text-align: left;">램 / 저장공간</th>
+            <th style="text-align: left;">월 요금</th>
+            <th style="text-align: left;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="font-weight: 700;">소규모</td>
+            <td>2 – 4명</td>
+            <td>2GB / 15GB</td>
+            <td style="font-feature-settings: 'tnum' 1;">4,900원</td>
+            <td><button type="button" class="btn btn-ghost">시작</button></td>
+          </tr>
+          <tr>
+            <td style="font-weight: 700;">친구들 <span class="tag tag-accent" style="margin-left: 8px;">추천</span></td>
+            <td>5 – 12명</td>
+            <td>6GB / 50GB</td>
+            <td style="font-feature-settings: 'tnum' 1;">11,900원</td>
+            <td><button type="button" class="btn btn-primary">시작</button></td>
+          </tr>
+          <tr>
+            <td style="font-weight: 700;">커뮤니티</td>
+            <td>13 – 40명</td>
+            <td>16GB / 150GB</td>
+            <td style="font-feature-settings: 'tnum' 1;">29,900원</td>
+            <td><button type="button" class="btn btn-ghost">시작</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="font-size: 13px; line-height: 22px; color: color-mix(in srgb, var(--color-text) 65%, transparent); margin: 20px 0 0;">모든 플랜에 24시간 무중단 운영, AI 관리, 시간별 백업, 모드팩 세팅이 포함됩니다. 약정 없음.</p>
+    </section>
+    </sc-if>
+
+    <sc-if value="{{ showQuote }}" hint-placeholder-val="{{ true }}">
+    <section style="padding: 70px 0 98px; border-top: 2px solid var(--color-divider);">
+      <figure style="margin: 0;">
+        <blockquote class="kr-h" style="font-size: clamp(24px, 2.6vw, 34px); line-height: 46px; letter-spacing: -0.025em; max-width: 34ch; margin: 0;">“전에는 서버 켜는 애가 자면 다 같이 못 들어갔어요. 지금은 그냥 항상 켜져 있어요.”</blockquote>
+        <figcaption style="font-size: 15.5px; line-height: 28px; color: color-mix(in srgb, var(--color-text) 70%, transparent); margin: 42px 0 0;">— 김도현, 고등학교 서버 운영자, 창원</figcaption>
+      </figure>
+    </section>
+    </sc-if>
+
+  </div>
+
+  <section style="background: var(--color-accent); color: var(--color-bg);">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 84px clamp(20px, 5vw, 72px);">
+      <h3 class="kr-h" style="font-size: clamp(32px, 4.2vw, 54px); line-height: 1.1; margin: 0 0 0 -0.04em;">
+        <span style="display: block;">서버 이름만 정하세요.</span>
+        <span style="display: block;">나머지는 저희가 합니다.</span>
+      </h3>
+    </div>
+  </section>
+
+  <div style="max-width: 1200px; margin: 0 auto; padding: 0 clamp(20px, 5vw, 72px);">
+    <footer style="display: flex; gap: 24px; flex-wrap: wrap; justify-content: space-between; padding: 56px 0; font-size: 13px; line-height: 28px; color: color-mix(in srgb, var(--color-text) 70%, transparent);">
+      <span>Glistering Melon — 창원에서 운영하는 마인크래프트 호스팅</span>
+      <span>문의 kkwonsc@gmail.com · Mojang / Microsoft와 제휴 관계가 없습니다</span>
+    </footer>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;showPricing&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;showQuote&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      showPricing: this.props.showPricing ?? true,
+      showQuote: this.props.showQuote ?? true,
+    };
+  }
+}
+</script>
+</body>
+</html>
