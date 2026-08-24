@@ -64,7 +64,7 @@
           <p style="font-size: 13px; line-height: 18px; letter-spacing: 0.08em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 70%, transparent); margin: 14px 0 0;">창원 리전 평균 핑</p>
         </div>
         <div>
-          <p class="kr-h" style="font-size: clamp(34px, 3.4vw, 48px); line-height: 56px; color: var(--color-accent); margin: 0 0 0 -0.045em; font-feature-settings: 'tnum' 1;">4,900원</p>
+          <p class="kr-h" style="font-size: clamp(34px, 3.4vw, 48px); line-height: 56px; color: var(--color-accent); margin: 0 0 0 -0.045em; font-feature-settings: 'tnum' 1;">7,900원</p>
           <p style="font-size: 13px; line-height: 18px; letter-spacing: 0.08em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 70%, transparent); margin: 14px 0 0;">월 시작 가격</p>
         </div>
         <div>
@@ -94,7 +94,7 @@
       <div data-feature style="display: grid; grid-template-columns: minmax(64px, 140px) minmax(0, 380px) minmax(0, 1fr); gap: 28px clamp(24px, 4vw, 72px); align-items: baseline; padding: 42px 0; border-top: 2px solid var(--color-divider);">
         <p class="kr-h" style="font-size: 15px; line-height: 28px; margin: 0; font-feature-settings: 'tnum' 1;">03</p>
         <h2 class="kr-h" style="font-size: 26px; line-height: 34px; letter-spacing: -0.02em; margin: 0;">친구들과 나눠 내는 가격</h2>
-        <p style="font-size: 15.5px; line-height: 28px; margin: 0; color: color-mix(in srgb, var(--color-text) 78%, transparent); max-width: 52ch;">월 4,900원부터. 넷이 나누면 한 사람에 1,225원, 편의점 커피 한 잔 값입니다. 약정도 없고, 안 쓰는 달은 잠깐 재워둘 수 있습니다.</p>
+        <p style="font-size: 15.5px; line-height: 28px; margin: 0; color: color-mix(in srgb, var(--color-text) 78%, transparent); max-width: 52ch;">월 7,900원부터. 넷이 나누면 한 사람에 2천 원이 안 됩니다. 약정도 없고, 안 쓰는 달은 잠깐 재워둘 수 있습니다.</p>
       </div>
 
       <div data-feature style="display: grid; grid-template-columns: minmax(64px, 140px) minmax(0, 380px) minmax(0, 1fr); gap: 28px clamp(24px, 4vw, 72px); align-items: baseline; padding: 42px 0; border-top: 2px solid var(--color-divider);">
@@ -140,14 +140,14 @@
         <tbody>
           <tr>
             <td style="font-weight: 700;">소규모</td>
-            <td>2 – 4명</td>
+            <td>1 – 3명</td>
             <td>2GB / 15GB</td>
-            <td style="font-feature-settings: 'tnum' 1;">4,900원</td>
+            <td style="font-feature-settings: 'tnum' 1;">7,900원</td>
             <td><button type="button" class="btn btn-ghost" onClick="{{ openModal }}">시작</button></td>
           </tr>
           <tr>
             <td style="font-weight: 700;">친구들 <span class="tag tag-accent" style="margin-left: 8px;">추천</span></td>
-            <td>5 – 12명</td>
+            <td>4 – 12명</td>
             <td>6GB / 50GB</td>
             <td style="font-feature-settings: 'tnum' 1;">11,900원</td>
             <td><button type="button" class="btn btn-primary" onClick="{{ openModal }}">시작</button></td>
@@ -156,21 +156,12 @@
             <td style="font-weight: 700;">커뮤니티</td>
             <td>13 – 40명</td>
             <td>16GB / 150GB</td>
-            <td style="font-feature-settings: 'tnum' 1;">29,900원</td>
+            <td style="font-feature-settings: 'tnum' 1;">49,000원</td>
             <td><button type="button" class="btn btn-ghost" onClick="{{ openModal }}">시작</button></td>
           </tr>
         </tbody>
       </table>
       <p style="font-size: 13px; line-height: 22px; color: color-mix(in srgb, var(--color-text) 65%, transparent); margin: 20px 0 0;">모든 플랜에 24시간 무중단 운영, AI 관리, 시간별 백업, 모드팩 세팅이 포함됩니다. 약정 없음.</p>
-    </section>
-    </sc-if>
-
-    <sc-if value="{{ showQuote }}" hint-placeholder-val="{{ true }}">
-    <section style="padding: 70px 0 98px; border-top: 2px solid var(--color-divider);">
-      <figure style="margin: 0;">
-        <blockquote class="kr-h" style="font-size: clamp(24px, 2.6vw, 34px); line-height: 46px; letter-spacing: -0.025em; max-width: 34ch; margin: 0;">“전에는 서버 켜는 애가 자면 다 같이 못 들어갔어요. 지금은 그냥 항상 켜져 있어요.”</blockquote>
-        <figcaption style="font-size: 15.5px; line-height: 28px; color: color-mix(in srgb, var(--color-text) 70%, transparent); margin: 42px 0 0;">— 김도현, 고등학교 서버 운영자, 창원</figcaption>
-      </figure>
     </section>
     </sc-if>
 
@@ -248,7 +239,7 @@
 
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;showPricing&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;showQuote&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;showPricing&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
 const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1541411425342193764/YEyqv-mBWEi6q-8NowkeGKxnJees6oSWa3154WgUUhozEb6HwkP-clXuzVWlj3vu2pb2';
 
 class Component extends DCLogic {
@@ -300,7 +291,6 @@ class Component extends DCLogic {
   renderVals() {
     return {
       showPricing: this.props.showPricing ?? true,
-      showQuote: this.props.showQuote ?? true,
       modalOpen: this.state.modalOpen,
       submitted: this.state.submitted,
       formVisible: !this.state.submitted,
