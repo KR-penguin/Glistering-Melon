@@ -1,10 +1,34 @@
 from pathlib import Path
 
+from pydantic import ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+
+    @field_validator(
+        "discord_ops_channel_id",
+        "host_ram_mb_budget",
+        "host_storage_gb_budget",
+        "max_concurrent_servers",
+        "mc_port_range_start",
+        "mc_port_range_end",
+        mode="before",
+    )
+    @classmethod
+    def _blank_means_default(cls, v, info: ValidationInfo):
+        """Treat an unset key in .env as "use the default", not a parse error.
+
+        A fresh deploy legitimately leaves optional credentials blank (e.g.
+        DISCORD_OPS_CHANNEL_ID= before the bot exists). Pydantic would
+        otherwise reject "" as an invalid int and crash-loop the container,
+        taking the whole provisioning pipeline down over a feature that is
+        supposed to degrade gracefully.
+        """
+        if v is None or (isinstance(v, str) and not v.strip()):
+            return cls.model_fields[info.field_name].default
+        return v
 
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-sonnet-5"
