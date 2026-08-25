@@ -72,6 +72,13 @@ async def notify_provision_failed(nickname: str, container_name: str, error: str
     )
 
 
+def _admin_url() -> str:
+    """Where the owner actually acts. There is no Discord bot listening, so a
+    notification that says "reply here" would be a dead end — every alert that
+    asks for an action has to carry this link."""
+    return f"{settings.public_base_url.rstrip('/')}/admin"
+
+
 async def notify_payment_claim(
     nickname: str, payment_code: str | None, price_krw: int | None, repeat: bool
 ) -> None:
@@ -81,8 +88,9 @@ async def notify_payment_claim(
     title = "입금했다고 합니다 (재요청)" if repeat else "입금했다고 합니다 — 확인 필요"
     await _send_embed(
         title,
-        f"{nickname}님이 입금 완료를 알렸습니다. 은행 앱에서 확인 후 디스코드에 "
-        f"`{payment_code} 입금확인` 이라고 알려주세요.",
+        f"{nickname}님이 입금 완료를 알렸습니다. 은행 앱에서 확인하신 뒤 "
+        f"아래 관리자 페이지에서 `{payment_code}` 의 [입금 확인]을 눌러주세요.\n"
+        f"{_admin_url()}",
         COLOR_WARN,
         [
             {"name": "입금코드", "value": str(payment_code), "inline": True},
@@ -96,7 +104,8 @@ async def notify_payment_expired(
 ) -> None:
     await _send_embed(
         "미입금으로 서버 정지됨",
-        f"{nickname}님 서버를 정지했습니다. 월드는 그대로 보존되며, 입금 확인 시 자동으로 다시 켜집니다.",
+        f"{nickname}님 서버를 정지했습니다. 월드는 그대로 보존되며, "
+        f"관리자 페이지에서 입금 확인하면 자동으로 다시 켜집니다.\n{_admin_url()}",
         COLOR_WARN,
         [
             {"name": "입금코드", "value": str(payment_code), "inline": True},
