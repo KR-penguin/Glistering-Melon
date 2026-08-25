@@ -93,11 +93,20 @@
     });
   }
 
-  async function loadMe() {
+  async function loadMe(afterLogin) {
     if (!token()) return false;
     const r = await fetch('/api/auth/me', { headers: { 'X-Auth-Token': token() } });
     if (!r.ok) { try { localStorage.removeItem('gm_auth_token'); } catch (e) {} return false; }
-    renderServers(await r.json());
+    const data = await r.json();
+
+    // Signing in with exactly one server should land on that server, not on a
+    // list of one. The list still shows on a revisit, so it stays reachable.
+    if (afterLogin && data.servers.length === 1) {
+      location.href = '/session/' + data.servers[0].session_token;
+      return true;
+    }
+
+    renderServers(data);
     $('loginpanel').hidden = true;
     $('mypanel').hidden = false;
     return true;
@@ -122,7 +131,7 @@
       if (!r.ok) throw new Error(d.detail || '로그인에 실패했어요.');
       try { localStorage.setItem('gm_auth_token', d.token); } catch (err) {}
       $('msg').textContent = '';
-      await loadMe();
+      await loadMe(true);
     } catch (err) {
       $('msg').className = 'hint err';
       $('msg').textContent = err.message;

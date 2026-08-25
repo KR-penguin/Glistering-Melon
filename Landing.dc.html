@@ -34,6 +34,12 @@
     <a href="#value" style="white-space: nowrap;">핵심 가치</a>
     <a href="#ai" style="white-space: nowrap;">AI 관리</a>
     <a href="#price" style="white-space: nowrap;">요금</a>
+    <sc-if value="{{ hasAccount }}" hint-placeholder-val="{{ false }}">
+    <a href="{{ myServerUrl }}" style="white-space: nowrap; font-weight: 700;">내 서버</a>
+    </sc-if>
+    <sc-if value="{{ showLogin }}" hint-placeholder-val="{{ true }}">
+    <a href="{{ loginUrl }}" style="white-space: nowrap;">로그인</a>
+    </sc-if>
     <button type="button" class="btn btn-primary" onClick="{{ openModal }}">1분 만에 서버 열기</button>
   </nav>
 
@@ -52,9 +58,16 @@
         <button type="button" class="btn btn-primary" onClick="{{ openModal }}">1분 만에 서버 열기</button>
         <button type="button" class="btn btn-ghost">요금 보기</button>
       </div>
-      <sc-if value="{{ hasSavedSession }}" hint-placeholder-val="{{ false }}">
+      <sc-if value="{{ hasAccount }}" hint-placeholder-val="{{ false }}">
+      <p style="font-size: 14px; line-height: 22px; margin: 16px 0 0;">
+        <a href="{{ myServerUrl }}" style="font-weight: 700;">{{ myServerLabel }}</a>
+      </p>
+      </sc-if>
+      <sc-if value="{{ showReturnLink }}" hint-placeholder-val="{{ false }}">
       <p style="font-size: 14px; line-height: 22px; margin: 16px 0 0;">
         <a href="#" onClick="{{ goToSession }}">이미 서버가 있어요 — 관리 페이지로 이동</a>
+        <span class="text-muted"> · </span>
+        <a href="{{ loginUrl }}">로그인</a>
       </p>
       </sc-if>
       <p style="font-size: 13px; line-height: 20px; letter-spacing: 0.06em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 65%, transparent); margin: 20px 0 0;">약정 없음 · 언제든 해지</p>
@@ -267,6 +280,7 @@ class Component extends DCLogic {
       createError: '',
       submitted: false,
       savedSession: '',
+      authServers: null,
     };
     this.openModal = this.openModal.bind(this);
     this.closeModal = this.closeModal.bind(this);
@@ -283,6 +297,28 @@ class Component extends DCLogic {
       const token = localStorage.getItem('gm_session_token');
       if (token) this.setState({ savedSession: token });
     } catch (err) { /* private mode */ }
+    this.loadAccount();
+  }
+  loadAccount() {
+    // A signed-in visitor should land on their own server, not on the pitch.
+    let auth = null;
+    try { auth = localStorage.getItem('gm_auth_token'); } catch (err) { return; }
+    if (!auth) return;
+
+    fetch(BACKEND_URL + '/api/auth/me', { headers: { 'X-Auth-Token': auth } })
+      .then((res) => {
+        if (res.status === 401) {
+          // Expired or revoked — clear it so the nav offers a fresh login
+          // instead of a link that bounces.
+          try { localStorage.removeItem('gm_auth_token'); } catch (err) {}
+          return null;
+        }
+        return res.ok ? res.json() : null;
+      })
+      .then((data) => {
+        if (data) this.setState({ authServers: data.servers || [] });
+      })
+      .catch(() => { /* backend unreachable — leave the page as-is */ });
   }
   openModal() {
     this.setState({ modalOpen: true, createError: '' });
@@ -337,9 +373,25 @@ class Component extends DCLogic {
     e.stopPropagation();
   }
   renderVals() {
+    const servers = this.state.authServers;
+    const signedIn = Array.isArray(servers);
+    // One server: straight to it. Several: the login page lists them.
+    const myServerUrl = signedIn && servers.length === 1
+      ? BACKEND_URL + '/session/' + servers[0].session_token
+      : BACKEND_URL + '/login';
+
     return {
       showPricing: this.props.showPricing ?? true,
       supportUrl: SUPPORT_URL,
+      loginUrl: BACKEND_URL + '/login',
+      hasAccount: signedIn && servers.length > 0,
+      myServerUrl,
+      myServerLabel: signedIn && servers.length === 1
+        ? '내 서버 관리하기'
+        : '내 서버 ' + (signedIn ? servers.length : 0) + '개 관리하기',
+      // Only offer a bare login link when there is no account link to show.
+      showLogin: !(signedIn && servers.length > 0),
+      showReturnLink: !(signedIn && servers.length > 0) && !!this.state.savedSession,
       modalOpen: this.state.modalOpen,
       submitted: this.state.submitted,
       formVisible: !this.state.submitted,
@@ -349,7 +401,6 @@ class Component extends DCLogic {
       creating: this.state.creating,
       createError: this.state.createError,
       submitLabel: this.state.creating ? '여는 중…' : '서버 열기',
-      hasSavedSession: !!this.state.savedSession,
       openModal: this.openModal,
       closeModal: this.closeModal,
       setNickname: this.setNickname,
