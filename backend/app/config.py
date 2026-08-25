@@ -32,8 +32,8 @@ class Settings(BaseSettings):
 
     # "local" (OpenAI-compatible server, no per-call cost) or "anthropic".
     llm_provider: str = "local"
-    local_llm_base_url: str = "http://gm-llm:11434/v1"
-    local_llm_model: str = "qwen2.5:7b-instruct"
+    local_llm_base_url: str = "http://gm-llm:8080/v1"
+    local_llm_model: str = "Qwen3.5-4B-Q4_K_M"
 
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-sonnet-5"

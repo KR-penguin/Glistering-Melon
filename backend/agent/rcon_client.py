@@ -44,6 +44,44 @@ class RconError(Exception):
     pass
 
 
+class RconCommandBlocked(RconError):
+    pass
+
+
+# Lifecycle verbs never go through RCON. The product requirement is that
+# "restart the server" ALWAYS acts at the container level — that is what works
+# when the game is hung, which is exactly when it is needed.
+#
+# This lives in the executor rather than in a system prompt on purpose. The
+# agents now run on a small local model that routes correctly around 92-97% of
+# the time; at eight tools and ambiguous Korean ("서버 정지" reads as both
+# `/stop` and `docker stop`) roughly one turn in 25 goes the wrong way. A
+# prompt cannot make that never happen. A refusal here can, and it holds
+# regardless of which model is configured, what the prompt says, or what a
+# customer types into the chat box.
+#
+# Every one of these has a correct Docker-level counterpart in
+# app/docker_ctl.py, so nothing legitimate is lost.
+BLOCKED_VERBS = frozenset(
+    {"stop", "restart", "reload", "shutdown", "halt", "kill", "end", "quit", "exit", "reboot"}
+)
+
+
+def command_verb(command: str) -> str:
+    stripped = command.strip().lstrip("/")
+    return stripped.split()[0].lower() if stripped.split() else ""
+
+
+def assert_allowed(command: str) -> None:
+    verb = command_verb(command)
+    if verb in BLOCKED_VERBS:
+        raise RconCommandBlocked(
+            f"'{verb}' is a server-lifecycle action and must not run through RCON. "
+            f"Use start_server / stop_server / restart_server instead — those work "
+            f"even when the game is unresponsive."
+        )
+
+
 def _pack(request_id: int, packet_type: int, body: str) -> bytes:
     payload = struct.pack("<ii", request_id, packet_type) + body.encode("utf-8") + b"\x00\x00"
     return struct.pack("<i", len(payload)) + payload
@@ -88,6 +126,8 @@ def _run_sync(
     timeout: float = _DEFAULT_TIMEOUT,
     port: int = RCON_PORT_IN_CONTAINER,
 ) -> str:
+    # Enforced at the socket, so no caller can bypass it.
+    assert_allowed(command)
     with socket.create_connection((host, port), timeout=timeout) as sock:
         sock.settimeout(timeout)
         _authenticate(sock, password)

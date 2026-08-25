@@ -7,6 +7,7 @@ addressing any server.
 
 import logging
 
+from agent import routing
 from agent.llm import LLMError, run_tool_loop
 from agent.tools import TOOL_IMPLS, TOOL_SCHEMAS
 
@@ -65,7 +66,7 @@ async def handle_ops_message(message: str) -> str:
     try:
         return await run_tool_loop(
             system=SYSTEM_PROMPT,
-            first_message=message,
+            first_message=f"{routing.hint_for(message, owner=True)}{message}",
             tool_schemas=TOOL_SCHEMAS,
             tool_impls=TOOL_IMPLS,
             max_iterations=MAX_TOOL_ITERATIONS,

@@ -24,6 +24,7 @@ forbids pasting them back).
 import asyncio
 import logging
 
+from agent import routing
 from agent.llm import LLMError, run_tool_loop
 from agent.rag.store import search_commands
 from agent.rcon_client import run_command as rcon_run_command
@@ -267,7 +268,7 @@ async def handle_customer_message(session_token: str, message: str) -> str:
     try:
         return await run_tool_loop(
             system=SYSTEM_PROMPT,
-            first_message=f"{context}\n\n손님 메시지: {message}",
+            first_message=f"{routing.hint_for(message)}{context}\n\n손님 메시지: {message}",
             tool_schemas=TOOL_SCHEMAS,
             tool_impls=build_tool_impls(row["id"]),
             max_iterations=MAX_TOOL_ITERATIONS,

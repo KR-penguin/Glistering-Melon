@@ -20,33 +20,72 @@ services:
     networks:
       - gm-net
 
-  # Local model server, so the ops/customer agents cost nothing per call.
-  # CPU-only by default: the box has a GTX 1050 Ti but no driver installed,
-  # and installing one on a remote SSH-only machine that runs the live service
-  # is a separate, riskier decision. To use the GPU later, install the driver
-  # plus nvidia-container-toolkit and add a `deploy.resources` GPU reservation
-  # here — no application code changes.
+  # Local model server, so agent calls cost nothing.
+  #
+  # llama.cpp rather than Ollama, for two reasons that matter here:
+  #  - it exposes GBNF / JSON-schema constrained decoding, which is the path
+  #    to making an invalid tool name literally ungenerable rather than merely
+  #    unlikely on a small model,
+  #  - it gives exact control over layer offload and context on a 4GB card,
+  #    where Ollama's scheduler silently falls back to CPU and quietly
+  #    degrades tool-call accuracy while still looking healthy.
+  #
+  # CPU-only as configured (-ngl 0). The box has a GTX 1050 Ti but no driver;
+  # switching to GPU is image + two flags, no application changes.
   llm:
-    image: ollama/ollama:latest
+    image: ghcr.io/ggml-org/llama.cpp:server
     container_name: gm-llm
     restart: unless-stopped
     volumes:
-      - ollama-models:/root/.ollama
+      - llm-models:/models
     environment:
-      # One model resident at a time, unloaded after idle — RAM here competes
-      # with the customer Minecraft servers' budget.
-      - OLLAMA_MAX_LOADED_MODELS=1
-      - OLLAMA_KEEP_ALIVE=10m
-      - OLLAMA_NUM_PARALLEL=1
+      - LLAMA_CACHE=/models
+    command:
+      - "-hf"
+      - "unsloth/Qwen3.5-4B-GGUF:Q4_K_M"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8080"
+      # -ngl 0 = CPU only. Set to "all" once the NVIDIA driver is installed.
+      - "-ngl"
+      - "0"
+      - "-c"
+      - "8192"
+      # Leave one core for the OS, the backend, and the Minecraft servers.
+      - "-t"
+      - "5"
+      - "-np"
+      - "1"
+      # KV cache stays f16: llama.cpp's own docs warn that quantizing it
+      # substantially degrades tool-calling accuracy.
+      - "-ctk"
+      - "f16"
+      - "-ctv"
+      - "f16"
+      - "--cache-prompt"
+      - "--cache-reuse"
+      - "256"
+      - "--jinja"
+      # Nearly every 2026 llama.cpp Qwen3.5 tool-call bug is reasoning output
+      # leaking into the tool-call stream. Off also saves hundreds of tokens
+      # per turn, which on CPU is tens of seconds.
+      - "--reasoning-budget"
+      - "0"
+      - "--chat-template-kwargs"
+      - '{"enable_thinking":false}'
+    # Hard ceilings so inference can never starve the live hosting service.
+    mem_limit: 5g
+    cpus: 5.0
     networks:
       - gm-net
-    # Deliberately NOT published to the host: only the backend needs it, and
-    # an open inference endpoint on the LAN is free compute for anyone on it.
+    # Deliberately NOT published to the host: only the backend needs it, and an
+    # open inference endpoint on the LAN is free compute for anyone on it.
     expose:
-      - "11434"
+      - "8080"
 
 volumes:
-  ollama-models:
+  llm-models:
 
 networks:
   gm-net:
