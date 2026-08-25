@@ -51,11 +51,17 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Glistering Melon backend", lifespan=lifespan)
 
+# The landing page is served from a different origin than this API, so every
+# header it sends has to be listed here — a missing one fails the preflight and
+# the request never arrives. X-Auth-Token is how the landing page asks whether
+# the visitor is signed in.
+CORS_HEADERS = ["Content-Type", "X-Auth-Token", "X-Admin-Token"]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.cors_allow_origin],
-    allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=CORS_HEADERS,
 )
 
 app.mount(
