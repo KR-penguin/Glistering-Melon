@@ -59,6 +59,30 @@
     </dl>
   </section>
 
+  <section class="panel" id="signup" aria-label="계정 만들기" hidden
+           style="border-color: var(--color-accent);">
+    <h2 class="kr-h" style="font-size: 18px; margin: 0 0 6px;">서버 관리를 하고 싶다면 계정을 가입해주세요!</h2>
+    <p class="hint" style="margin: 0 0 16px;">
+      지금은 이 브라우저에서만 서버에 접근할 수 있어요. 계정을 만들면 다른 기기나
+      다른 브라우저에서도 로그인해서 관리할 수 있습니다.
+    </p>
+    <form id="signupform" style="display: grid; gap: 12px; max-width: 420px;">
+      <div class="field">
+        <label for="su-email">이메일</label>
+        <input id="su-email" class="input" type="email" required autocomplete="email" placeholder="you@example.com">
+      </div>
+      <div class="field">
+        <label for="su-pw">비밀번호</label>
+        <input id="su-pw" class="input" type="password" required autocomplete="new-password" minlength="8" placeholder="8자 이상">
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <button type="submit" class="btn btn-primary" id="su-btn">가입하고 서버 연결하기</button>
+        <a href="/login" class="hint">이미 계정이 있어요</a>
+        <span class="hint" id="su-msg"></span>
+      </div>
+    </form>
+  </section>
+
   <section class="panel pay" id="paypanel" aria-label="입금 안내" hidden>
     <h2 class="kr-h" style="font-size: 18px; margin: 0 0 12px;">입금 안내</h2>
     <dl style="margin: 0;">
@@ -124,6 +148,9 @@
     $('who').textContent = d.nickname + '님의';
     document.title = d.nickname + '님의 서버 · Glistering Melon';
     renderSupport(d.support_url);
+    // Only offered once the server is actually up — the whole point of the
+    // flow is that opening a server needs no signup.
+    $('signup').hidden = d.claimed || d.status === 'provisioning';
 
     const running = d.running;
     const suspended = d.status === 'suspended';
@@ -219,6 +246,32 @@
 
   $('examples').addEventListener('click', function (e) {
     if (e.target.tagName === 'BUTTON') send(e.target.textContent);
+  });
+
+  $('signupform').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    $('su-btn').disabled = true;
+    $('su-msg').textContent = '가입 중…';
+    try {
+      const r = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: $('su-email').value.trim(),
+          password: $('su-pw').value,
+          session_token: token
+        })
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || '가입에 실패했어요.');
+      try { localStorage.setItem('gm_auth_token', d.token); } catch (err) {}
+      $('su-msg').textContent = '가입 완료! 이제 어디서든 로그인해서 관리할 수 있어요.';
+      $('signup').hidden = true;
+      refresh();
+    } catch (err) {
+      $('su-msg').textContent = err.message;
+      $('su-btn').disabled = false;
+    }
   });
 
   $('paidbtn').addEventListener('click', async function () {

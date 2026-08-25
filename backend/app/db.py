@@ -31,6 +31,22 @@ CREATE TABLE IF NOT EXISTS servers (
     status TEXT NOT NULL DEFAULT 'provisioning',
     created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS auth_tokens (
+    token TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id),
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_auth_tokens_user ON auth_tokens(user_id);
 """
 
 # Columns added after the first deploy. CREATE TABLE IF NOT EXISTS silently
@@ -48,6 +64,8 @@ _ADDED_COLUMNS = {
         ("paid_at", "TEXT"),
         ("grace_extended", "INTEGER NOT NULL DEFAULT 0"),
         ("suspended_at", "TEXT"),
+        # Null until the customer registers and claims the server.
+        ("user_id", "TEXT"),
     ],
 }
 
@@ -55,6 +73,7 @@ _INDEXES = [
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_servers_session_token ON servers(session_token)",
     "CREATE INDEX IF NOT EXISTS idx_servers_payment_code ON servers(payment_code)",
     "CREATE INDEX IF NOT EXISTS idx_servers_payment_status ON servers(payment_status)",
+    "CREATE INDEX IF NOT EXISTS idx_servers_user ON servers(user_id)",
 ]
 
 

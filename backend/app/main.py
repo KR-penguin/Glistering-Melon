@@ -13,6 +13,7 @@ from app.config import settings
 from app.db import init_db
 from app.docker_ctl import ensure_network, get_client
 from app.routes.admin import router as admin_router
+from app.routes.auth import router as auth_router
 from app.routes.servers import router as servers_router
 from app.routes.session import router as session_router
 
@@ -66,6 +67,7 @@ app.mount(
 app.include_router(servers_router)
 app.include_router(session_router)
 app.include_router(admin_router)
+app.include_router(auth_router)
 
 
 @app.get("/healthz")

@@ -1,8 +1,8 @@
-"""Defenses against small-model sloppiness.
+"""Defenses in the shared tool loop.
 
-A local 7B model malforms tool arguments and invents tool names in ways Claude
-generally does not. Each test here corresponds to a real failure mode that
-would otherwise surface as a 500 to a paying customer.
+Each test corresponds to a failure mode that would otherwise surface as a 500
+to a paying customer: a malformed argument, an invented tool name, a tool that
+raises, or a model that never stops calling tools.
 """
 
 import json
@@ -10,7 +10,7 @@ import json
 import pytest
 
 from agent import llm
-from agent.llm import LLMReply, LocalProvider, ToolCall, _loads_lenient, run_tool_loop
+from agent.llm import LLMReply, ToolCall, _loads_lenient, run_tool_loop
 
 
 # --- lenient argument parsing ----------------------------------------------
@@ -155,28 +155,11 @@ async def test_loop_gives_up_with_fallback_text(use_fake):
     assert out == "포기했어요."
 
 
-# --- OpenAI-shaped request building ----------------------------------------
-
-
-def test_local_provider_converts_tool_schemas_to_openai_shape():
-    provider = LocalProvider("http://x/v1", "m")
-    reply = LLMReply(tool_calls=[ToolCall("c1", "restart_server", {"a": 1})])
-    turn = provider.assistant_turn(reply)
-    assert turn["tool_calls"][0]["function"]["name"] == "restart_server"
-    assert json.loads(turn["tool_calls"][0]["function"]["arguments"]) == {"a": 1}
-
-
-def test_local_provider_tool_results_are_role_tool():
-    results = LocalProvider.tool_results([(ToolCall("c1", "t", {}), {"ok": True})])
-    assert results[0]["role"] == "tool"
-    assert results[0]["tool_call_id"] == "c1"
-
-
-def test_provider_selection_follows_settings(monkeypatch):
+def test_missing_api_key_is_a_clear_error_not_a_crash(monkeypatch):
     from app.config import settings
 
     llm.reset_provider()
-    monkeypatch.setattr(settings, "llm_provider", "local")
-    monkeypatch.setattr(settings, "local_llm_base_url", "http://gm-llm:11434/v1")
-    assert llm.get_provider().name == "local"
+    monkeypatch.setattr(settings, "anthropic_api_key", "")
+    with pytest.raises(llm.LLMError, match="ANTHROPIC_API_KEY"):
+        llm.get_provider()
     llm.reset_provider()

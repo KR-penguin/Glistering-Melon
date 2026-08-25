@@ -30,11 +30,6 @@ class Settings(BaseSettings):
             return cls.model_fields[info.field_name].default
         return v
 
-    # "local" (OpenAI-compatible server, no per-call cost) or "anthropic".
-    llm_provider: str = "local"
-    local_llm_base_url: str = "http://gm-llm:8080/v1"
-    local_llm_model: str = "Qwen3.5-4B-Q4_K_M"
-
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-sonnet-5"
 

@@ -1,17 +1,14 @@
 """Plumbing tests (no LLM needed) plus the acceptance tests for the founder's
 "act from outside the server" requirement.
 
-The acceptance tests need a working LLM. They matter more now that the agent
-runs on a small local model: routing "restart the server" to an RCON command
-is exactly the mistake a weaker model makes, and it is the one failure the
-product cannot tolerate. Run them against whatever provider is configured
-(GM_TEST_LLM=1 with a reachable local server, or an ANTHROPIC_API_KEY).
+The acceptance tests need ANTHROPIC_API_KEY. They cover the routing the
+product cannot get wrong: a restart must never become an RCON command. The
+executor now refuses that outright (see tests/test_rcon_interlock.py) — these
+check the model gets there on its own, without leaning on the refusal.
 """
 
-import os
 import sqlite3
 
-import httpx
 import pytest
 
 from agent import ops_agent, tools
@@ -21,20 +18,8 @@ from app.config import settings
 from app.db import SCHEMA
 
 
-def _llm_available() -> bool:
-    if settings.llm_provider == "anthropic":
-        return bool(settings.anthropic_api_key)
-    if not os.getenv("GM_TEST_LLM"):
-        return False
-    try:
-        base = settings.local_llm_base_url.rstrip("/").removesuffix("/v1")
-        return httpx.get(f"{base}/api/tags", timeout=3).status_code == 200
-    except Exception:
-        return False
-
-
 requires_llm = pytest.mark.skipif(
-    not _llm_available(), reason="no LLM configured (set GM_TEST_LLM=1 or ANTHROPIC_API_KEY)"
+    not settings.anthropic_api_key, reason="ANTHROPIC_API_KEY not set"
 )
 
 
