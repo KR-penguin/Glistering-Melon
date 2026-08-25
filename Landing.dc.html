@@ -184,7 +184,7 @@
   <div style="max-width: 1200px; margin: 0 auto; padding: 0 clamp(20px, 5vw, 72px);">
     <footer style="display: flex; gap: 24px; flex-wrap: wrap; justify-content: space-between; padding: 56px 0; font-size: 13px; line-height: 28px; color: color-mix(in srgb, var(--color-text) 70%, transparent);">
       <span>Glistering Melon — 창원에서 운영하는 마인크래프트 호스팅</span>
-      <span>문의 kkwonsc@gmail.com · Mojang / Microsoft와 제휴 관계가 없습니다</span>
+      <span><a href="{{ supportUrl }}" target="_blank" rel="noopener">디스코드 문의</a> · kkwonsc@gmail.com · Mojang / Microsoft와 제휴 관계가 없습니다</span>
     </footer>
   </div>
 
@@ -251,6 +251,11 @@
 // address, so this page can only open servers from inside that network —
 // change to the public origin once the box is reachable from the internet.
 const BACKEND_URL = 'http://192.168.45.100:8000';
+
+// Support server. Deposits do arrive without the payment code (customer
+// forgets, a parent sends instead, the bank truncates the name), so there has
+// to be a place to sort that out with a human.
+const SUPPORT_URL = 'https://discord.gg/REPLACE_ME';
 
 class Component extends DCLogic {
   constructor(props) {
@@ -336,6 +341,7 @@ class Component extends DCLogic {
   renderVals() {
     return {
       showPricing: this.props.showPricing ?? true,
+      supportUrl: SUPPORT_URL,
       modalOpen: this.state.modalOpen,
       submitted: this.state.submitted,
       formVisible: !this.state.submitted,

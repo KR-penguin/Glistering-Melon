@@ -66,6 +66,7 @@ async def session_status(token: str):
         "address": f"{settings.minecraft_public_host}:{row['game_port']}",
         "modpack_key": row["modpack_key"],
         "payment": billing.payment_summary(row),
+        "support_url": settings.discord_invite_url or None,
     }
 
 

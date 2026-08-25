@@ -38,6 +38,13 @@ class Settings(BaseSettings):
     discord_bot_token: str = ""
     discord_ops_channel_id: int = 0
 
+    # Public invite to the support server. Shown to customers wherever payment
+    # can go wrong — deposits arrive without the code often enough (customer
+    # forgets, a parent sends instead, the bank truncates the name) that there
+    # has to be somewhere to ask. Blank hides every link rather than shipping
+    # a dead one.
+    discord_invite_url: str = ""
+
     gmail_address: str = ""
     gmail_app_password: str = ""
 

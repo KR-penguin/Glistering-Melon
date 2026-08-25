@@ -68,6 +68,7 @@
       <div class="row"><dt>남은 시간</dt><dd class="countdown" id="p-left">—</dd></div>
     </dl>
     <p class="hint">입금이 확인되지 않으면 서버가 잠시 정지됩니다. 월드는 지워지지 않고, 확인되는 대로 다시 켜집니다.</p>
+    <p class="hint" id="payhelp" hidden>이름 뒤에 코드를 못 붙이셨거나 다른 분 이름으로 보내셨다면 <a id="payhelplink" href="#" target="_blank" rel="noopener">디스코드로 알려주세요</a>. 그래야 어느 서버 입금인지 찾을 수 있어요.</p>
     <div style="margin-top: 14px;">
       <button type="button" class="btn btn-primary" id="paidbtn">입금했어요</button>
       <span class="hint" id="paidmsg" style="margin-left: 10px;"></span>
@@ -92,6 +93,10 @@
     </form>
   </section>
 
+  <p class="hint" id="support" style="margin-top: 20px;" hidden>
+    매니저가 해결 못 하는 일은 <a id="supportlink" href="#" target="_blank" rel="noopener">디스코드 문의</a>로 알려주세요.
+  </p>
+
 </div>
 
 <script>
@@ -105,9 +110,20 @@
 
   function won(n) { return n == null ? '—' : n.toLocaleString('ko-KR') + '원'; }
 
+  function renderSupport(url) {
+    // Hidden unless a real invite is configured — a dead "문의하기" link is
+    // worse than none when someone's payment is stuck.
+    if (!url) return;
+    for (const [wrap, link] of [['support', 'supportlink'], ['payhelp', 'payhelplink']]) {
+      $(link).href = url;
+      $(wrap).hidden = false;
+    }
+  }
+
   function renderStatus(d) {
     $('who').textContent = d.nickname + '님의';
     document.title = d.nickname + '님의 서버 · Glistering Melon';
+    renderSupport(d.support_url);
 
     const running = d.running;
     const suspended = d.status === 'suspended';
