@@ -8,6 +8,7 @@ path.
 """
 
 import logging
+import re
 import sqlite3
 
 import docker
@@ -150,3 +151,51 @@ def container_status(container_name: str) -> str:
         return _get_container(client, container_name).status
     except NotFound:
         return "not_found"
+
+
+def read_logs(container_name: str, tail: int = 100) -> str:
+    """Read a server's console output from outside the game.
+
+    Works regardless of server type (vanilla/Paper/modpack) and keeps
+    working when the Minecraft process is hung or RCON is unresponsive,
+    because it reads the container's stdout rather than talking to the
+    game. Nothing is installed into the customer's server to enable this.
+    """
+    client = get_client()
+    container = _get_container(client, container_name)
+    raw = container.logs(tail=tail)
+    return raw.decode("utf-8", errors="replace")
+
+
+# The running version is not necessarily the one recorded at provisioning
+# time: VERSION=LATEST resolves inside the container, and a Modrinth
+# modpack pins its own Minecraft version. Command syntax varies by version,
+# so the agent needs the version the server is ACTUALLY running.
+_VERSION_PATTERNS = (
+    re.compile(r"Resolved version given [^\s]+ into ([\d][\d.]*)"),
+    re.compile(r"Starting minecraft server version ([\d][\d.]*)"),
+    re.compile(r"\(MC:\s*([\d][\d.]*)\)"),
+    re.compile(r"minecraft_version[\"'\s:=]+([\d][\d.]*)"),
+)
+
+
+def detect_version_from_logs(container_name: str) -> str | None:
+    """Best-effort read of the actually-running Minecraft version.
+
+    Returns None rather than guessing when the logs don't say — callers
+    must treat None as "unknown", never as "assume the default".
+    """
+    try:
+        text = read_logs(container_name, tail=2000)
+    except Exception:
+        return None
+
+    # Later lines win: a modpack's resolved version is logged after the
+    # generic startup banner.
+    found = None
+    for line in text.splitlines():
+        for pattern in _VERSION_PATTERNS:
+            m = pattern.search(line)
+            if m:
+                found = m.group(1)
+    return found
