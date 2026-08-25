@@ -9,9 +9,14 @@ services:
       - "8000:8000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./data:/srv/data
+      # Mounted at the SAME path inside and outside the container on purpose.
+      # This backend asks the HOST's Docker daemon to bind-mount world dirs
+      # into each Minecraft container, and the daemon resolves those paths
+      # against the HOST filesystem — so a path that only exists inside this
+      # container would silently put world data somewhere else entirely.
+      - ${HOST_DATA_ROOT}:${HOST_DATA_ROOT}
     environment:
-      - DATA_ROOT=/srv/data
+      - DATA_ROOT=${HOST_DATA_ROOT}
     networks:
       - gm-net
 
