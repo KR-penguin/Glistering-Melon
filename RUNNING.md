@@ -93,6 +93,50 @@ ssh sean@192.168.45.100 "cd /home/sean/glistering-melon && tar xzf b.tar.gz && r
 
 ---
 
+## DB 보기
+
+SQLite 파일 하나입니다: 서버의 `/srv/minecraft/data/glistering_melon.db`
+
+**전체 요약** — 테이블별 행 수와 주요 컬럼:
+
+```bash
+ssh sean@192.168.45.100 "docker exec gm-backend python -m app.dbview"
+```
+
+**특정 테이블만:**
+
+```bash
+ssh sean@192.168.45.100 "docker exec gm-backend python -m app.dbview servers"
+```
+
+테이블: `servers`, `users`, `applications`, `auth_tokens`
+
+**모든 컬럼 보기** (기본은 주요 컬럼만):
+
+```bash
+ssh sean@192.168.45.100 "docker exec gm-backend python -m app.dbview servers --all-columns"
+```
+
+**직접 조회:**
+
+```bash
+ssh sean@192.168.45.100 "docker exec gm-backend python -m app.dbview --sql \"SELECT nickname, status, payment_status FROM servers\""
+```
+
+읽기 전용이라 `SELECT`만 됩니다. 실수로 고객 데이터를 바꿀 수 없게 SQLite를
+읽기 전용 모드로 열고, `SELECT`가 아닌 문은 거부합니다. 값을 바꾸실 일은
+관리자 페이지에서 하세요.
+
+비밀번호 해시·RCON 비밀번호·세션 토큰은 출력에서 가려집니다.
+
+**파일 백업** (통째로 복사):
+
+```bash
+scp sean@192.168.45.100:/srv/minecraft/data/glistering_melon.db ./backup.db
+```
+
+---
+
 ## 자주 쓰는 것
 
 **손님 서버 목록**
