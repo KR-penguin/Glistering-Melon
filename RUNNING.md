@@ -88,8 +88,24 @@ scp /tmp/b.tar.gz sean@192.168.45.100:/home/sean/glistering-melon/
 ssh sean@192.168.45.100 "cd /home/sean/glistering-melon && tar xzf b.tar.gz && rm b.tar.gz && cd backend && docker compose up -d --build"
 ```
 
+`--build`가 반드시 필요합니다. 코드는 이미지 빌드 시점에 복사되므로 `--force-recreate`
+만으로는 **옛 코드가 그대로 돕니다** — 파일은 서버에 올라갔는데 동작은 안 바뀌는,
+알아채기 어려운 상태가 됩니다.
+
 리포지토리가 private이라 서버가 직접 `git pull`을 못 합니다. GitHub에 deploy key를
 등록하면 서버에서 바로 받아올 수 있습니다.
+
+---
+
+## 저장 위치
+
+| | 경로 | 디스크 |
+|---|---|---|
+| 손님 월드 | `/mnt/hdd/minecraft/worlds/` | HDD 2.7TB |
+| DB | `/srv/minecraft/data/glistering_melon.db` | SSD |
+
+월드는 용량이 크니 HDD, DB는 작고 잦은 읽기/쓰기가 있으니 SSD로 나눠 뒀습니다.
+`.env`의 `HOST_WORLDS_ROOT`로 바꿀 수 있습니다.
 
 ---
 
