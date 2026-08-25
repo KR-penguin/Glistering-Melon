@@ -29,12 +29,6 @@ def patched(tmp_path, monkeypatch):
         "notify_provision_failed",
     ):
         monkeypatch.setattr(provisioning.discord_notify, name, noop)
-    for name in (
-        "send_no_capacity_email",
-        "send_provisioned_email",
-        "send_provision_failed_email",
-    ):
-        monkeypatch.setattr(provisioning.email_notify, name, noop)
 
     async def noop_background(server_id):
         return None

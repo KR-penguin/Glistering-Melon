@@ -1,4 +1,4 @@
-"""Tools exposed to the Claude tool-calling loop (agent/claude_client.py).
+"""Owner-facing tools, driven by the loop in agent/llm.py via agent/ops_agent.py.
 
 Two structurally separate families, per the founder's explicit requirement
 that the agent must be able to act from *outside* the server process:

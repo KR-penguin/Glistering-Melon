@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>운영 · Glistering Melon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;800&family=Noto+Sans+KR:wght@400;500;700;900&display=swap">
+<link rel="stylesheet" href="/static/ds.css">
+<style>
+  body { margin: 0; word-break: keep-all; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 32px) 64px; }
+  .kr-h { font-weight: 900; letter-spacing: -0.03em; }
+  .panel { border: 2px solid var(--color-divider); padding: clamp(16px, 3vw, 24px); margin-top: 24px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; padding: 8px; border-bottom: 2px solid var(--color-divider); color: color-mix(in srgb, var(--color-text) 60%, transparent); }
+  td { padding: 8px; border-bottom: 1px solid var(--color-divider); }
+  .code { font-family: ui-monospace, Menlo, monospace; font-weight: 700; font-size: 15px; }
+  .muted { color: color-mix(in srgb, var(--color-text) 55%, transparent); font-size: 12.5px; }
+  .msg { margin-top: 12px; font-size: 13.5px; }
+  .err { color: var(--color-accent-800); }
+  .empty { padding: 20px 8px; color: color-mix(in srgb, var(--color-text) 55%, transparent); font-size: 14px; }
+</style>
+</head>
+<body>
+
+<nav class="nav" style="padding-inline: max(16px, calc((100% - 900px) / 2 + 16px));">
+  <span class="nav-brand kr-h">GLISTERING MELON 운영</span>
+</nav>
+
+<div class="wrap">
+
+  <section class="panel">
+    <div class="field">
+      <label for="tok">관리자 토큰</label>
+      <input id="tok" class="input" type="password" placeholder="ADMIN_TOKEN" autocomplete="current-password">
+    </div>
+    <p class="muted" style="margin: 8px 0 0;">이 브라우저에만 저장됩니다.</p>
+    <div style="margin-top: 12px;">
+      <button type="button" class="btn btn-primary" id="load">불러오기</button>
+      <span class="msg" id="authmsg"></span>
+    </div>
+  </section>
+
+  <section class="panel" id="pendingpanel" hidden>
+    <h2 class="kr-h" style="font-size: 18px; margin: 0 0 4px;">입금 대기</h2>
+    <p class="muted" style="margin: 0 0 16px;">은행 앱에서 입금자명 뒤의 4자리 코드를 확인하고 눌러주세요.</p>
+    <div id="pending"></div>
+    <div class="msg" id="payresult"></div>
+  </section>
+
+  <section class="panel" id="serverpanel" hidden>
+    <h2 class="kr-h" style="font-size: 18px; margin: 0 0 16px;">전체 서버</h2>
+    <div id="servers"></div>
+  </section>
+
+  <section class="panel" id="askpanel" hidden>
+    <h2 class="kr-h" style="font-size: 18px; margin: 0 0 4px;">운영 에이전트</h2>
+    <p class="muted" style="margin: 0 0 16px;">예: "Steve 서버 재시작해줘", "지금 입금 대기 누구야?"</p>
+    <div id="asklog" style="display: flex; flex-direction: column; gap: 10px;"></div>
+    <form style="display: flex; gap: 8px; margin-top: 14px;" id="askform">
+      <input class="input" id="askmsg" type="text" autocomplete="off" placeholder="무엇을 할까요?" style="flex: 1;" required>
+      <button type="submit" class="btn btn-primary" id="asksend">보내기</button>
+    </form>
+  </section>
+
+</div>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const TIER = { small: '소규모', friends: '친구들', community: '커뮤니티' };
+  try { $('tok').value = localStorage.getItem('gm_admin_token') || ''; } catch (e) {}
+
+  function token() { return $('tok').value.trim(); }
+
+  async function api(path, opts) {
+    const res = await fetch(path, Object.assign({ headers: { 'X-Admin-Token': token(), 'Content-Type': 'application/json' } }, opts || {}));
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || ('오류 ' + res.status));
+    return data;
+  }
+
+  function fmtLeft(due) {
+    if (!due) return '—';
+    const left = Math.floor((new Date(due) - Date.now()) / 1000);
+    if (left <= 0) return '기한 지남';
+    const h = Math.floor(left / 3600), m = Math.floor((left % 3600) / 60);
+    return (h ? h + '시간 ' : '') + m + '분 남음';
+  }
+
+  function renderPending(rows) {
+    if (!rows.length) { $('pending').innerHTML = '<p class="empty">입금 대기 중인 서버가 없습니다.</p>'; return; }
+    const t = document.createElement('table');
+    t.innerHTML = '<thead><tr><th>코드</th><th>닉네임</th><th>플랜</th><th>금액</th><th>상태</th><th>기한</th><th></th></tr></thead>';
+    const tb = document.createElement('tbody');
+    rows.forEach((r) => {
+      const tr = document.createElement('tr');
+      const suspended = r.status === 'suspended';
+      tr.innerHTML =
+        '<td class="code">' + r.payment_code + '</td>' +
+        '<td>' + r.nickname + '</td>' +
+        '<td>' + (TIER[r.tier] || r.tier) + '</td>' +
+        '<td>' + (r.price_krw ? r.price_krw.toLocaleString('ko-KR') + '원' : '—') + '</td>' +
+        '<td>' + (suspended ? '정지됨' : '실행 중') + (r.grace_extended ? ' <span class="muted">(연장됨)</span>' : '') + '</td>' +
+        '<td class="muted">' + fmtLeft(r.payment_due_at) + '</td>';
+      const td = document.createElement('td');
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-primary';
+      btn.textContent = '입금 확인';
+      btn.onclick = async function () {
+        btn.disabled = true;
+        try {
+          const d = await api('/api/admin/confirm-payment', {
+            method: 'POST', body: JSON.stringify({ payment_code: r.payment_code })
+          });
+          $('payresult').className = 'msg';
+          $('payresult').textContent = d.message;
+          load();
+        } catch (e) {
+          $('payresult').className = 'msg err';
+          $('payresult').textContent = e.message;
+          btn.disabled = false;
+        }
+      };
+      td.append(btn);
+      tr.append(td);
+      tb.append(tr);
+    });
+    t.append(tb);
+    $('pending').innerHTML = '';
+    $('pending').append(t);
+  }
+
+  function renderServers(rows) {
+    if (!rows.length) { $('servers').innerHTML = '<p class="empty">서버가 없습니다.</p>'; return; }
+    const t = document.createElement('table');
+    t.innerHTML = '<thead><tr><th>닉네임</th><th>플랜</th><th>버전</th><th>모드팩</th><th>상태</th></tr></thead>';
+    const tb = document.createElement('tbody');
+    rows.forEach((r) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td>' + r.nickname + '</td>' +
+        '<td>' + (TIER[r.tier] || r.tier) + '</td>' +
+        '<td class="muted">' + r.mc_version + '</td>' +
+        '<td class="muted">' + (r.modpack_key || '—') + '</td>' +
+        '<td>' + r.status + '</td>';
+      tb.append(tr);
+    });
+    t.append(tb);
+    $('servers').innerHTML = '';
+    $('servers').append(t);
+  }
+
+  async function load() {
+    if (!token()) { $('authmsg').className = 'msg err'; $('authmsg').textContent = '토큰을 입력해주세요.'; return; }
+    try { localStorage.setItem('gm_admin_token', token()); } catch (e) {}
+    $('authmsg').className = 'msg';
+    $('authmsg').textContent = '불러오는 중…';
+    try {
+      const [p, s] = await Promise.all([api('/api/admin/pending'), api('/api/admin/servers')]);
+      renderPending(p.pending);
+      renderServers(s.servers);
+      $('pendingpanel').hidden = false;
+      $('serverpanel').hidden = false;
+      $('askpanel').hidden = false;
+      $('authmsg').textContent = '';
+    } catch (e) {
+      $('authmsg').className = 'msg err';
+      $('authmsg').textContent = e.message;
+      $('pendingpanel').hidden = true;
+      $('serverpanel').hidden = true;
+      $('askpanel').hidden = true;
+    }
+  }
+
+  function addAsk(who, text) {
+    const el = document.createElement('div');
+    el.style.fontSize = '14px';
+    el.style.lineHeight = '22px';
+    el.innerHTML = '<span class="muted">' + who + '</span> ';
+    const span = document.createElement('span');
+    span.style.whiteSpace = 'pre-wrap';
+    span.textContent = text;
+    el.append(span);
+    $('asklog').append(el);
+    return span;
+  }
+
+  $('askform').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const v = $('askmsg').value.trim();
+    if (!v) return;
+    $('askmsg').value = '';
+    addAsk('나', v);
+    const pending = addAsk('에이전트', '…');
+    $('asksend').disabled = true;
+    try {
+      const d = await api('/api/admin/ask', { method: 'POST', body: JSON.stringify({ message: v }) });
+      pending.textContent = d.reply;
+      load();
+    } catch (err) {
+      pending.textContent = err.message;
+    } finally {
+      $('asksend').disabled = false;
+    }
+  });
+
+  $('load').addEventListener('click', load);
+  $('tok').addEventListener('keydown', (e) => { if (e.key === 'Enter') load(); });
+  if ($('tok').value) load();
+})();
+</script>
+</body>
+</html>

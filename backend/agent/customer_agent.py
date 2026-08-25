@@ -22,11 +22,9 @@ forbids pasting them back).
 """
 
 import asyncio
-import json
 import logging
 
-from anthropic import Anthropic
-
+from agent.llm import LLMError, run_tool_loop
 from agent.rag.store import search_commands
 from agent.rcon_client import run_command as rcon_run_command
 from app import billing, docker_ctl
@@ -75,16 +73,6 @@ stop_my_server 를 쓰세요. 이건 게임 밖에서 동작해서 서버가 멈
 당신이 해결할 수 없는 일(입금 확인, 환불, 요금 변경, 다른 사람 서버)은 \
 붙잡고 있지 말고 디스코드 문의로 안내하세요.\
 """
-
-_client: Anthropic | None = None
-
-
-def get_client() -> Anthropic:
-    global _client
-    if _client is None:
-        _client = Anthropic(api_key=settings.anthropic_api_key)
-    return _client
-
 
 def get_server_by_token(session_token: str):
     conn = get_connection()
@@ -271,52 +259,20 @@ async def handle_customer_message(session_token: str, message: str) -> str:
     if row is None:
         return "세션을 찾을 수 없습니다."
 
-    if not settings.anthropic_api_key:
-        return "AI 매니저가 아직 설정되지 않았어요. 운영자에게 문의해주세요."
-
-    impls = build_tool_impls(row["id"])
-    client = get_client()
-
     context = (
         f"[서버 정보] 닉네임 {row['nickname']}, 플랜 {row['tier']}, "
         f"상태 {row['status']}, 입금상태 {row['payment_status']}"
     )
-    messages = [{"role": "user", "content": f"{context}\n\n손님 메시지: {message}"}]
 
-    for _ in range(MAX_TOOL_ITERATIONS):
-        response = await asyncio.to_thread(
-            client.messages.create,
-            model=settings.anthropic_model,
-            max_tokens=1024,
+    try:
+        return await run_tool_loop(
             system=SYSTEM_PROMPT,
-            tools=TOOL_SCHEMAS,
-            messages=messages,
+            first_message=f"{context}\n\n손님 메시지: {message}",
+            tool_schemas=TOOL_SCHEMAS,
+            tool_impls=build_tool_impls(row["id"]),
+            max_iterations=MAX_TOOL_ITERATIONS,
+            fallback_text="처리에 시간이 너무 오래 걸려서 중단했어요. 다시 말씀해주시겠어요?",
         )
-
-        if response.stop_reason != "tool_use":
-            return "".join(b.text for b in response.content if b.type == "text")
-
-        messages.append({"role": "assistant", "content": response.content})
-
-        results = []
-        for block in response.content:
-            if block.type != "tool_use":
-                continue
-            impl = impls.get(block.name)
-            if impl is None:
-                out = {"error": f"unknown tool {block.name}"}
-            else:
-                logger.info("customer tool %s on server %s", block.name, row["id"])
-                out = impl(**block.input)
-                if asyncio.iscoroutine(out):
-                    out = await out
-            results.append(
-                {
-                    "type": "tool_result",
-                    "tool_use_id": block.id,
-                    "content": json.dumps(out, ensure_ascii=False, default=str),
-                }
-            )
-        messages.append({"role": "user", "content": results})
-
-    return "처리에 시간이 너무 오래 걸려서 중단했어요. 다시 말씀해주시겠어요?"
+    except LLMError:
+        logger.exception("customer agent LLM call failed")
+        return "매니저가 지금 응답할 수 없어요. 잠시 후 다시 시도하시거나 디스코드로 문의해주세요."

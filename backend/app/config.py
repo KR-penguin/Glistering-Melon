@@ -8,7 +8,6 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     @field_validator(
-        "discord_ops_channel_id",
         "host_ram_mb_budget",
         "host_storage_gb_budget",
         "max_concurrent_servers",
@@ -31,12 +30,19 @@ class Settings(BaseSettings):
             return cls.model_fields[info.field_name].default
         return v
 
+    # "local" (OpenAI-compatible server, no per-call cost) or "anthropic".
+    llm_provider: str = "local"
+    local_llm_base_url: str = "http://gm-llm:11434/v1"
+    local_llm_model: str = "qwen2.5:7b-instruct"
+
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-sonnet-5"
 
     discord_webhook_url: str = ""
-    discord_bot_token: str = ""
-    discord_ops_channel_id: int = 0
+
+    # Shared secret for /admin. One operator, one token — replace with real
+    # accounts if a second person ever needs access.
+    admin_token: str = ""
 
     # Public invite to the support server. Shown to customers wherever payment
     # can go wrong — deposits arrive without the code often enough (customer
@@ -44,9 +50,6 @@ class Settings(BaseSettings):
     # has to be somewhere to ask. Blank hides every link rather than shipping
     # a dead one.
     discord_invite_url: str = ""
-
-    gmail_address: str = ""
-    gmail_app_password: str = ""
 
     host_ram_mb_budget: int = 24576
     host_storage_gb_budget: int = 400

@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timezone
 
 from agent.rcon_client import wait_until_ready
-from app import billing, capacity, discord_notify, docker_ctl, email_notify
+from app import billing, capacity, discord_notify, docker_ctl
 from app.config import settings
 from app.db import get_connection
 
@@ -17,11 +17,6 @@ _provision_lock = asyncio.Lock()
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
-
-
-def _application_email(conn: sqlite3.Connection, application_id: str) -> str | None:
-    row = conn.execute("SELECT email FROM applications WHERE id=?", (application_id,)).fetchone()
-    return row["email"] if row else None
 
 
 async def submit_application(nickname: str, email: str, tier: str, modpack_key: str | None) -> dict:
@@ -45,7 +40,6 @@ async def submit_application(nickname: str, email: str, tier: str, modpack_key: 
                 )
                 conn.commit()
                 await discord_notify.notify_capacity_alert(nickname, tier)
-                await email_notify.send_no_capacity_email(email, nickname)
                 return {"status": "no_capacity", "application_id": application_id}
 
             server_id = str(uuid.uuid4())
@@ -130,19 +124,12 @@ async def _provision_background(server_id: str) -> None:
             conn.execute("UPDATE servers SET status='running' WHERE id=?", (server_id,))
             conn.commit()
 
+            # No customer email is sent: the session page they were redirected
+            # to already shows the address, price and deposit code, and polls
+            # its own status.
             await discord_notify.notify_provisioned(
                 row["nickname"], row["container_name"], row["game_port"]
             )
-            email = row["email"] or _application_email(conn, row["application_id"])
-            if email:
-                await email_notify.send_server_ready_email(
-                    to=email,
-                    nickname=row["nickname"],
-                    game_address=f"{settings.minecraft_public_host}:{row['game_port']}",
-                    session_url=billing.session_url(row["session_token"]),
-                    price_krw=row["price_krw"],
-                    payment_code=row["payment_code"],
-                )
         except Exception as exc:
             logger.exception("provisioning failed for server %s", server_id)
             conn.execute("UPDATE servers SET status='error' WHERE id=?", (server_id,))
@@ -150,8 +137,5 @@ async def _provision_background(server_id: str) -> None:
             await discord_notify.notify_provision_failed(
                 row["nickname"], row["container_name"], str(exc)
             )
-            email = row["email"] or _application_email(conn, row["application_id"])
-            if email:
-                await email_notify.send_provision_failed_email(email, row["nickname"])
     finally:
         conn.close()

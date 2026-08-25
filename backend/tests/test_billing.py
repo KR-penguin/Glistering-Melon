@@ -50,7 +50,6 @@ def db(tmp_path, monkeypatch):
 
     for fn in ("notify_payment_claim", "notify_payment_expired"):
         monkeypatch.setattr(billing.discord_notify, fn, noop)
-    monkeypatch.setattr(billing.email_notify, "send_payment_expired_email", noop)
 
     return {"path": path, "calls": calls}
 

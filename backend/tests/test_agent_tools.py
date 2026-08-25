@@ -1,20 +1,40 @@
-"""Plumbing tests (no API key needed) plus the real acceptance tests for
-the founder's "outside the server" requirement (need ANTHROPIC_API_KEY —
-skipped automatically without one).
+"""Plumbing tests (no LLM needed) plus the acceptance tests for the founder's
+"act from outside the server" requirement.
+
+The acceptance tests need a working LLM. They matter more now that the agent
+runs on a small local model: routing "restart the server" to an RCON command
+is exactly the mistake a weaker model makes, and it is the one failure the
+product cannot tolerate. Run them against whatever provider is configured
+(GM_TEST_LLM=1 with a reachable local server, or an ANTHROPIC_API_KEY).
 """
 
 import os
 import sqlite3
 
+import httpx
 import pytest
 
-from agent import claude_client, tools
+from agent import ops_agent, tools
 from agent.rag import store
 from app import docker_ctl
+from app.config import settings
 from app.db import SCHEMA
 
-requires_anthropic = pytest.mark.skipif(
-    not os.getenv("ANTHROPIC_API_KEY"), reason="ANTHROPIC_API_KEY not set"
+
+def _llm_available() -> bool:
+    if settings.llm_provider == "anthropic":
+        return bool(settings.anthropic_api_key)
+    if not os.getenv("GM_TEST_LLM"):
+        return False
+    try:
+        base = settings.local_llm_base_url.rstrip("/").removesuffix("/v1")
+        return httpx.get(f"{base}/api/tags", timeout=3).status_code == 200
+    except Exception:
+        return False
+
+
+requires_llm = pytest.mark.skipif(
+    not _llm_available(), reason="no LLM configured (set GM_TEST_LLM=1 or ANTHROPIC_API_KEY)"
 )
 
 
@@ -170,22 +190,20 @@ def test_detect_version_returns_none_rather_than_guessing(monkeypatch):
     assert docker_ctl.detect_version_from_logs("whatever") is None
 
 
-# --- full agent-loop acceptance tests (need a real ANTHROPIC_API_KEY) -------
+# --- full agent-loop acceptance tests (need a working LLM) -----------------
 
 
-@requires_anthropic
+@requires_llm
 async def test_ban_request_uses_rcon_not_docker(calls):
-    reply = await claude_client.handle_message(
-        "srv-1 서버에서 Steve 밴 시켜줘."
-    )
+    reply = await ops_agent.handle_ops_message("srv-1 서버에서 Steve 밴 시켜줘.")
     assert calls["rcon"], f"expected an RCON call, got none. reply={reply}"
     assert not calls["docker"], f"ban must never touch Docker lifecycle, got {calls['docker']}"
     assert "ban" in calls["rcon"][0][1].lower()
 
 
-@requires_anthropic
+@requires_llm
 async def test_restart_request_uses_docker_not_rcon(calls):
-    reply = await claude_client.handle_message("srv-1 서버 껐다 켜줘.")
+    reply = await ops_agent.handle_ops_message("srv-1 서버 껐다 켜줘.")
     assert calls["docker"], f"expected a Docker lifecycle call, got none. reply={reply}"
     assert not calls["rcon"], f"restart must never go through RCON, got {calls['rcon']}"
     assert calls["docker"][0][0] == "restart"

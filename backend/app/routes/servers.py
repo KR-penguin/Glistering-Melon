@@ -12,7 +12,10 @@ router = APIRouter()
 
 class CreateServerRequest(BaseModel):
     nickname: str
-    email: EmailStr
+    # Optional: nothing is emailed to customers. Kept only so the operator has
+    # a way to reach someone whose payment cannot be matched — support
+    # otherwise runs through Discord.
+    email: EmailStr | None = None
     tier: str
     modpack_key: str | None = None
 

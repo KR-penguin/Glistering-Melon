@@ -29,7 +29,7 @@ import secrets
 import sqlite3
 from datetime import datetime, timedelta, timezone
 
-from app import discord_notify, docker_ctl, email_notify
+from app import discord_notify, docker_ctl
 from app.config import settings
 from app.db import get_connection
 
@@ -273,15 +273,11 @@ async def sweep_overdue() -> int:
             conn.commit()
             stopped += 1
 
+            # The customer is not emailed: they find out from the session page
+            # (status + countdown) or by asking in the support Discord.
             await discord_notify.notify_payment_expired(
                 row["nickname"], row["payment_code"], row["price_krw"]
             )
-            if row["email"]:
-                await email_notify.send_payment_expired_email(
-                    to=row["email"],
-                    nickname=row["nickname"],
-                    session_url=session_url(row["session_token"]),
-                )
         return stopped
     finally:
         conn.close()

@@ -12,13 +12,41 @@ services:
       # Mounted at the SAME path inside and outside the container on purpose.
       # This backend asks the HOST's Docker daemon to bind-mount world dirs
       # into each Minecraft container, and the daemon resolves those paths
-      # against the HOST filesystem — so a path that only exists inside this
+      # against the HOST filesystem — so a path that only existed inside this
       # container would silently put world data somewhere else entirely.
       - ${HOST_DATA_ROOT}:${HOST_DATA_ROOT}
     environment:
       - DATA_ROOT=${HOST_DATA_ROOT}
     networks:
       - gm-net
+
+  # Local model server, so the ops/customer agents cost nothing per call.
+  # CPU-only by default: the box has a GTX 1050 Ti but no driver installed,
+  # and installing one on a remote SSH-only machine that runs the live service
+  # is a separate, riskier decision. To use the GPU later, install the driver
+  # plus nvidia-container-toolkit and add a `deploy.resources` GPU reservation
+  # here — no application code changes.
+  llm:
+    image: ollama/ollama:latest
+    container_name: gm-llm
+    restart: unless-stopped
+    volumes:
+      - ollama-models:/root/.ollama
+    environment:
+      # One model resident at a time, unloaded after idle — RAM here competes
+      # with the customer Minecraft servers' budget.
+      - OLLAMA_MAX_LOADED_MODELS=1
+      - OLLAMA_KEEP_ALIVE=10m
+      - OLLAMA_NUM_PARALLEL=1
+    networks:
+      - gm-net
+    # Deliberately NOT published to the host: only the backend needs it, and
+    # an open inference endpoint on the LAN is free compute for anyone on it.
+    expose:
+      - "11434"
+
+volumes:
+  ollama-models:
 
 networks:
   gm-net:
