@@ -66,8 +66,15 @@ def _build_env(
         "ENABLE_RCON": "true",
         "RCON_PASSWORD": rcon_password,
         "RCON_PORT": str(RCON_PORT_IN_CONTAINER),
-        "ENABLE_WHITELIST": "true",
-        "WHITELIST": nickname,
+        # Open to everyone by default. A customer who wants it locked down can
+        # ask the AI manager to turn the whitelist on, so the restrictive
+        # setting is one sentence away rather than the default.
+        "ENABLE_WHITELIST": "false",
+        # The person who ordered the server is its operator. With the
+        # whitelist off this is the only thing that distinguishes them from
+        # any other player who joins, and without it they would have no
+        # authority at all on a server they are paying for.
+        "OPS": nickname,
         "OVERRIDE_SERVER_PROPERTIES": "true",
     }
     if modpack_key:

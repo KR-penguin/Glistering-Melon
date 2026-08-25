@@ -1,5 +1,9 @@
-"""Free, unauthenticated Mojang username lookup — catches a typo'd Java
-username before it silently breaks the container's whitelist.
+"""Free, unauthenticated Mojang username lookup.
+
+Catches a typo'd Java username at signup. The server is open to everyone, so
+a bad name no longer locks anybody out — but it is still what makes the
+customer the operator of their own server, and what identifies them to the
+operator, so a silent typo is worth one GET to avoid.
 """
 
 import logging
