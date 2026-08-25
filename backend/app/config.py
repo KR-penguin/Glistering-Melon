@@ -14,6 +14,7 @@ class Settings(BaseSettings):
         "max_concurrent_servers",
         "mc_port_range_start",
         "mc_port_range_end",
+        "payment_grace_minutes",
         mode="before",
     )
     @classmethod
@@ -51,6 +52,18 @@ class Settings(BaseSettings):
 
     data_root: str = "./data"
     cors_allow_origin: str = "*"
+
+    # Minutes an unpaid server stays up before the sweeper stops it (never
+    # deletes). See app/billing.py for why the failure mode matters more than
+    # the length. Env-tunable so it can be changed without a redeploy.
+    payment_grace_minutes: int = 60
+
+    # How the backend refers to itself in links sent to customers. Must become
+    # the real public URL once the box is reachable from outside the LAN.
+    public_base_url: str = "http://192.168.45.100:8000"
+
+    # Host/port players use to connect. Defaults to the LAN address for now.
+    minecraft_public_host: str = "192.168.45.100"
 
     @property
     def db_path(self) -> str:

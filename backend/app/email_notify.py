@@ -54,6 +54,37 @@ async def send_provisioned_email(to: str, nickname: str, game_address: str) -> N
     await asyncio.to_thread(_send_sync, to, "[Glistering Melon] 서버 오픈 완료", body)
 
 
+async def send_server_ready_email(
+    to: str, nickname: str, game_address: str, session_url: str, price_krw: int, payment_code: str
+) -> None:
+    body = (
+        f"{nickname}님, 서버가 열렸어요!\n\n"
+        f"접속 주소: {game_address}\n"
+        f"관리 페이지: {session_url}\n\n"
+        f"[입금 안내]\n"
+        f"금액: {price_krw:,}원\n"
+        f"계좌: 경남은행 2070218854605\n"
+        f"입금자명: 본인이름 뒤에 {payment_code} 를 붙여주세요 (예: 홍길동{payment_code})\n\n"
+        "입금이 확인되지 않으면 서버가 잠시 정지됩니다. "
+        "월드는 지워지지 않고, 입금 확인 즉시 다시 켜집니다.\n"
+        "이미 입금하셨다면 관리 페이지에서 '입금했어요'를 눌러주세요.\n\n"
+        "- Glistering Melon"
+    )
+    await asyncio.to_thread(_send_sync, to, "[Glistering Melon] 서버가 열렸습니다", body)
+
+
+async def send_payment_expired_email(to: str, nickname: str, session_url: str) -> None:
+    body = (
+        f"{nickname}님, 입금이 확인되지 않아 서버를 잠시 정지했어요.\n\n"
+        "월드 데이터는 그대로 보존돼 있습니다. "
+        "입금이 확인되면 자동으로 다시 켜집니다.\n\n"
+        f"관리 페이지: {session_url}\n"
+        "이미 입금하셨다면 관리 페이지에서 '입금했어요'를 눌러주세요.\n\n"
+        "- Glistering Melon"
+    )
+    await asyncio.to_thread(_send_sync, to, "[Glistering Melon] 서버가 정지됐습니다", body)
+
+
 async def send_provision_failed_email(to: str, nickname: str) -> None:
     body = (
         f"{nickname}님, 죄송해요.\n\n"

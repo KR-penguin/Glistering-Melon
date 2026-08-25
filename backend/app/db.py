@@ -33,6 +33,38 @@ CREATE TABLE IF NOT EXISTS servers (
 );
 """
 
+# Columns added after the first deploy. CREATE TABLE IF NOT EXISTS silently
+# does nothing on an existing table, so new columns have to be ALTERed in.
+# Keep every entry nullable or defaulted — SQLite cannot add a NOT NULL column
+# without a default to a table that already has rows.
+_ADDED_COLUMNS = {
+    "servers": [
+        ("session_token", "TEXT"),
+        ("email", "TEXT"),
+        ("price_krw", "INTEGER"),
+        ("payment_status", "TEXT NOT NULL DEFAULT 'awaiting'"),
+        ("payment_code", "TEXT"),
+        ("payment_due_at", "TEXT"),
+        ("paid_at", "TEXT"),
+        ("grace_extended", "INTEGER NOT NULL DEFAULT 0"),
+        ("suspended_at", "TEXT"),
+    ],
+}
+
+_INDEXES = [
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_servers_session_token ON servers(session_token)",
+    "CREATE INDEX IF NOT EXISTS idx_servers_payment_code ON servers(payment_code)",
+    "CREATE INDEX IF NOT EXISTS idx_servers_payment_status ON servers(payment_status)",
+]
+
+
+def _ensure_columns(conn: sqlite3.Connection) -> None:
+    for table, columns in _ADDED_COLUMNS.items():
+        existing = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
+        for name, decl in columns:
+            if name not in existing:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
+
 
 def get_connection() -> sqlite3.Connection:
     Path(settings.data_root).mkdir(parents=True, exist_ok=True)
@@ -43,11 +75,24 @@ def get_connection() -> sqlite3.Connection:
     return conn
 
 
+def apply_schema(conn: sqlite3.Connection) -> None:
+    """Bring a connection's database fully up to date.
+
+    Single entry point on purpose: tests build their fixtures through this too,
+    so the migration path is exercised rather than bypassed by a hand-written
+    CREATE TABLE that quietly drifts from production.
+    """
+    conn.executescript(SCHEMA)
+    _ensure_columns(conn)
+    for statement in _INDEXES:
+        conn.execute(statement)
+    conn.commit()
+
+
 def init_db() -> None:
     conn = get_connection()
     try:
-        conn.executescript(SCHEMA)
-        conn.commit()
+        apply_schema(conn)
     finally:
         conn.close()
 

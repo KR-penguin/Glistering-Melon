@@ -1,24 +1,13 @@
-import sqlite3
-
 import pytest
 
 from app import provisioning
-from app.db import SCHEMA
-
-
-def _connect(db_path: str) -> sqlite3.Connection:
-    conn = sqlite3.connect(db_path, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    return conn
+from tests.conftest import connect as _connect
+from tests.conftest import make_test_db
 
 
 @pytest.fixture(autouse=True)
 def patched(tmp_path, monkeypatch):
-    db_path = str(tmp_path / "test.db")
-    init_conn = sqlite3.connect(db_path)
-    init_conn.executescript(SCHEMA)
-    init_conn.commit()
-    init_conn.close()
+    db_path = make_test_db(str(tmp_path / "test.db"))
 
     # Real behavior: get_connection() opens a fresh connection to the same
     # file each call and submit_application closes it when done — mirror

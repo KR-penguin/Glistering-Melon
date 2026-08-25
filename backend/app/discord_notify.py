@@ -72,6 +72,39 @@ async def notify_provision_failed(nickname: str, container_name: str, error: str
     )
 
 
+async def notify_payment_claim(
+    nickname: str, payment_code: str | None, price_krw: int | None, repeat: bool
+) -> None:
+    """Customer says they paid. Payment confirmation is manual, so this is the
+    ping that has to actually reach the founder — it is the safety valve for a
+    real deposit landing while nobody is watching the bank app."""
+    title = "입금했다고 합니다 (재요청)" if repeat else "입금했다고 합니다 — 확인 필요"
+    await _send_embed(
+        title,
+        f"{nickname}님이 입금 완료를 알렸습니다. 은행 앱에서 확인 후 디스코드에 "
+        f"`{payment_code} 입금확인` 이라고 알려주세요.",
+        COLOR_WARN,
+        [
+            {"name": "입금코드", "value": str(payment_code), "inline": True},
+            {"name": "금액", "value": f"{price_krw:,}원" if price_krw else "-", "inline": True},
+        ],
+    )
+
+
+async def notify_payment_expired(
+    nickname: str, payment_code: str | None, price_krw: int | None
+) -> None:
+    await _send_embed(
+        "미입금으로 서버 정지됨",
+        f"{nickname}님 서버를 정지했습니다. 월드는 그대로 보존되며, 입금 확인 시 자동으로 다시 켜집니다.",
+        COLOR_WARN,
+        [
+            {"name": "입금코드", "value": str(payment_code), "inline": True},
+            {"name": "금액", "value": f"{price_krw:,}원" if price_krw else "-", "inline": True},
+        ],
+    )
+
+
 async def notify_watchdog_restart(container_name: str) -> None:
     await _send_embed(
         "자동 재시작 감지",

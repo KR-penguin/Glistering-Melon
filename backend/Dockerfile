@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
 COPY agent ./agent
+# app/static ships inside app/, including the vendored design-system CSS.
 
 EXPOSE 8000
 

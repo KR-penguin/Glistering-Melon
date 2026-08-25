@@ -16,7 +16,7 @@ import logging
 
 from agent.rag.store import available_versions, search_commands
 from agent.rcon_client import run_command as rcon_run_command
-from app import docker_ctl
+from app import billing, docker_ctl
 from app.db import get_connection
 
 logger = logging.getLogger(__name__)
@@ -100,6 +100,27 @@ async def read_server_logs(server_id: str, tail: int = 100) -> str:
     if row is None:
         return f"error: no server with id {server_id}"
     return await asyncio.to_thread(docker_ctl.read_logs, row["container_name"], tail)
+
+
+async def confirm_payment(payment_code: str) -> dict:
+    """Owner-only. Payment lands in a personal bank account with no API to
+    watch it, so a human reading the bank app is the source of truth."""
+    return await billing.mark_paid(payment_code.strip())
+
+
+def list_awaiting_payment() -> list[dict]:
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            """
+            SELECT nickname, tier, price_krw, payment_code, payment_status,
+                   payment_due_at, status, grace_extended
+            FROM servers WHERE payment_status != 'paid' ORDER BY created_at DESC
+            """
+        ).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
 
 
 async def run_rcon_command(server_id: str, command: str) -> str:
@@ -240,6 +261,29 @@ TOOL_SCHEMAS = [
             "required": ["server_id"],
         },
     },
+    {
+        "name": "list_awaiting_payment",
+        "description": (
+            "List servers that have not been confirmed as paid, with their deposit codes, amounts, "
+            "and deadlines. Use this when the owner asks who still owes money."
+        ),
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "confirm_payment",
+        "description": (
+            "Mark a deposit as received, using the 4-digit deposit code the customer was told to put "
+            "in their 입금자명. If the server was already stopped for non-payment this restarts it. "
+            "Only the owner can confirm payments — they read their bank app and tell you."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "payment_code": {"type": "string", "description": "the 4-digit code, e.g. '7392'"}
+            },
+            "required": ["payment_code"],
+        },
+    },
 ]
 
 TOOL_IMPLS = {
@@ -252,4 +296,6 @@ TOOL_IMPLS = {
     "start_server": start_server,
     "stop_server": stop_server,
     "restart_server": restart_server,
+    "list_awaiting_payment": lambda **kwargs: list_awaiting_payment(),
+    "confirm_payment": confirm_payment,
 }

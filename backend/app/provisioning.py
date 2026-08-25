@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timezone
 
 from agent.rcon_client import wait_until_ready
-from app import capacity, discord_notify, docker_ctl, email_notify
+from app import billing, capacity, discord_notify, docker_ctl, email_notify
 from app.config import settings
 from app.db import get_connection
 
@@ -53,12 +53,17 @@ async def submit_application(nickname: str, email: str, tier: str, modpack_key: 
             game_port = docker_ctl.allocate_port(conn)
             rcon_password = secrets.token_urlsafe(18)
             spec = capacity.TIER_SPECS[tier]
+            session_token = billing.generate_session_token()
+            payment_code = billing.generate_payment_code(conn)
 
             conn.execute(
                 """INSERT INTO servers
                    (id, application_id, nickname, tier, ram_mb, storage_gb, mc_version, mc_type,
-                    modpack_key, container_name, game_port, rcon_password, status, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'provisioning', ?)""",
+                    modpack_key, container_name, game_port, rcon_password, status, created_at,
+                    session_token, email, price_krw, payment_status, payment_code, payment_due_at,
+                    grace_extended)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'provisioning', ?,
+                           ?, ?, ?, 'awaiting', ?, ?, 0)""",
                 (
                     server_id,
                     application_id,
@@ -73,6 +78,11 @@ async def submit_application(nickname: str, email: str, tier: str, modpack_key: 
                     game_port,
                     rcon_password,
                     _now(),
+                    session_token,
+                    email,
+                    billing.price_for(tier),
+                    payment_code,
+                    billing.grace_deadline().isoformat(),
                 ),
             )
             conn.execute(
@@ -81,7 +91,13 @@ async def submit_application(nickname: str, email: str, tier: str, modpack_key: 
             conn.commit()
 
         asyncio.create_task(_provision_background(server_id))
-        return {"status": "provisioning", "application_id": application_id, "server_id": server_id}
+        return {
+            "status": "provisioning",
+            "application_id": application_id,
+            "server_id": server_id,
+            "session_token": session_token,
+            "session_url": billing.session_url(session_token),
+        }
     finally:
         conn.close()
 
@@ -117,12 +133,15 @@ async def _provision_background(server_id: str) -> None:
             await discord_notify.notify_provisioned(
                 row["nickname"], row["container_name"], row["game_port"]
             )
-            email = _application_email(conn, row["application_id"])
+            email = row["email"] or _application_email(conn, row["application_id"])
             if email:
-                await email_notify.send_provisioned_email(
+                await email_notify.send_server_ready_email(
                     to=email,
                     nickname=row["nickname"],
-                    game_address=f"<서버 도메인 또는 IP>:{row['game_port']}",
+                    game_address=f"{settings.minecraft_public_host}:{row['game_port']}",
+                    session_url=billing.session_url(row["session_token"]),
+                    price_krw=row["price_krw"],
+                    payment_code=row["payment_code"],
                 )
         except Exception as exc:
             logger.exception("provisioning failed for server %s", server_id)
@@ -131,7 +150,7 @@ async def _provision_background(server_id: str) -> None:
             await discord_notify.notify_provision_failed(
                 row["nickname"], row["container_name"], str(exc)
             )
-            email = _application_email(conn, row["application_id"])
+            email = row["email"] or _application_email(conn, row["application_id"])
             if email:
                 await email_notify.send_provision_failed_email(email, row["nickname"])
     finally:

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>내 서버 · Glistering Melon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;800&family=Noto+Sans+KR:wght@400;500;700;900&display=swap">
+<link rel="stylesheet" href="/static/ds.css">
+<style>
+  body { margin: 0; word-break: keep-all; text-wrap: pretty; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 32px) 64px; }
+  .kr-h { font-weight: 900; letter-spacing: -0.03em; }
+  .panel { border: 2px solid var(--color-divider); padding: clamp(16px, 3vw, 24px); margin-top: 24px; }
+  .row { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--color-divider); }
+  .row:last-child { border-bottom: 0; }
+  .row dt { color: color-mix(in srgb, var(--color-text) 65%, transparent); font-size: 13px; }
+  .row dd { margin: 0; font-weight: 600; font-size: 14px; text-align: right; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; }
+  .on { background: #1f9d55; } .off { background: var(--color-neutral-500); } .warn { background: var(--color-accent); }
+  .addr { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; }
+  #log { display: flex; flex-direction: column; gap: 12px; min-height: 220px; max-height: 46vh; overflow-y: auto; padding-right: 4px; }
+  .msg { display: flex; gap: 10px; align-items: flex-start; }
+  .msg .who { flex: 0 0 auto; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; width: 48px; padding-top: 3px; color: color-mix(in srgb, var(--color-text) 55%, transparent); }
+  .msg .body { flex: 1 1 auto; font-size: 14.5px; line-height: 24px; white-space: pre-wrap; }
+  .msg.me .body { color: color-mix(in srgb, var(--color-text) 78%, transparent); }
+  .composer { display: flex; gap: 8px; margin-top: 16px; }
+  .composer .input { flex: 1 1 auto; }
+  .pay { background: var(--color-accent-100); border-color: var(--color-accent-300); }
+  .countdown { font-variant-numeric: tabular-nums; font-weight: 800; }
+  .hint { font-size: 12.5px; line-height: 20px; color: color-mix(in srgb, var(--color-text) 60%, transparent); margin: 8px 0 0; }
+  .examples { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .examples button { cursor: pointer; font: inherit; font-size: 12.5px; padding: 5px 10px; background: transparent; border: 1px solid var(--color-divider); color: inherit; }
+  .examples button:hover { border-color: var(--color-accent); color: var(--color-accent); }
+</style>
+</head>
+<body>
+
+<nav class="nav" style="padding-inline: max(16px, calc((100% - 860px) / 2 + 16px));">
+  <span class="nav-brand kr-h">GLISTERING MELON</span>
+  <span id="navstatus" style="font-size: 13px;"></span>
+</nav>
+
+<div class="wrap">
+
+  <section style="padding: 40px 0 8px;">
+    <h1 class="kr-h" style="font-size: clamp(28px, 4.5vw, 40px); line-height: 1.15; margin: 0;">
+      <span id="who">내</span> 서버
+    </h1>
+  </section>
+
+  <section class="panel" aria-label="서버 상태">
+    <dl style="margin: 0;">
+      <div class="row"><dt>상태</dt><dd id="s-status">불러오는 중…</dd></div>
+      <div class="row"><dt>접속 주소</dt><dd class="addr" id="s-addr">—</dd></div>
+      <div class="row"><dt>플랜</dt><dd id="s-tier">—</dd></div>
+      <div class="row"><dt>월 요금</dt><dd id="s-price">—</dd></div>
+    </dl>
+  </section>
+
+  <section class="panel pay" id="paypanel" aria-label="입금 안내" hidden>
+    <h2 class="kr-h" style="font-size: 18px; margin: 0 0 12px;">입금 안내</h2>
+    <dl style="margin: 0;">
+      <div class="row"><dt>입금 계좌</dt><dd id="p-account">—</dd></div>
+      <div class="row"><dt>금액</dt><dd id="p-amount">—</dd></div>
+      <div class="row"><dt>입금자명</dt><dd id="p-name">—</dd></div>
+      <div class="row"><dt>남은 시간</dt><dd class="countdown" id="p-left">—</dd></div>
+    </dl>
+    <p class="hint">입금이 확인되지 않으면 서버가 잠시 정지됩니다. 월드는 지워지지 않고, 확인되는 대로 다시 켜집니다.</p>
+    <div style="margin-top: 14px;">
+      <button type="button" class="btn btn-primary" id="paidbtn">입금했어요</button>
+      <span class="hint" id="paidmsg" style="margin-left: 10px;"></span>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="AI 매니저">
+    <h2 class="kr-h" style="font-size: 18px; margin: 0 0 4px;">매니저에게 말하기</h2>
+    <p class="hint" style="margin: 0 0 16px;">원하는 걸 그냥 말씀하시면 됩니다. 명령어는 몰라도 돼요.</p>
+
+    <div id="log" aria-live="polite"></div>
+
+    <div class="examples" id="examples">
+      <button type="button">친구 화이트리스트에 추가해줘</button>
+      <button type="button">서버 껐다 켜줘</button>
+      <button type="button">지금 누가 접속해 있어?</button>
+    </div>
+
+    <form class="composer" id="composer">
+      <input class="input" id="msg" type="text" autocomplete="off" placeholder="예: 철수 화이트리스트에 넣어줘" required>
+      <button type="submit" class="btn btn-primary" id="send">보내기</button>
+    </form>
+  </section>
+
+</div>
+
+<script>
+(function () {
+  const token = location.pathname.split('/').filter(Boolean).pop();
+  try { localStorage.setItem('gm_session_token', token); } catch (e) {}
+
+  const $ = (id) => document.getElementById(id);
+  const TIER_LABEL = { small: '소규모', friends: '친구들', community: '커뮤니티' };
+  let deadline = null;
+
+  function won(n) { return n == null ? '—' : n.toLocaleString('ko-KR') + '원'; }
+
+  function renderStatus(d) {
+    $('who').textContent = d.nickname + '님의';
+    document.title = d.nickname + '님의 서버 · Glistering Melon';
+
+    const running = d.running;
+    const suspended = d.status === 'suspended';
+    const cls = running ? 'on' : (suspended ? 'warn' : 'off');
+    const label = running ? '실행 중'
+      : suspended ? '정지됨 (입금 확인 후 자동 재시작)'
+      : d.status === 'provisioning' ? '여는 중…'
+      : d.status === 'error' ? '오류 — 운영자 확인 중'
+      : '꺼짐';
+    $('s-status').innerHTML = '<span class="dot ' + cls + '"></span>' + label;
+    $('navstatus').innerHTML = '<span class="dot ' + cls + '"></span>' + (running ? '실행 중' : label);
+
+    $('s-addr').textContent = d.address;
+    $('s-tier').textContent = TIER_LABEL[d.tier] || d.tier;
+    $('s-price').textContent = won(d.payment.price_krw);
+
+    const p = d.payment;
+    if (p.status === 'paid') {
+      $('paypanel').hidden = true;
+      deadline = null;
+    } else {
+      $('paypanel').hidden = false;
+      $('p-account').textContent = p.bank_name + ' ' + p.bank_account;
+      $('p-amount').textContent = won(p.price_krw);
+      $('p-name').textContent = '이름 뒤에 ' + p.payment_code + ' (예: ' + p.depositor_name_example + ')';
+      deadline = p.seconds_remaining == null ? null : Date.now() + p.seconds_remaining * 1000;
+      if (p.extension_used) $('paidbtn').disabled = true;
+      tick();
+    }
+  }
+
+  function tick() {
+    if (deadline == null) { $('p-left').textContent = '—'; return; }
+    const left = Math.max(0, Math.floor((deadline - Date.now()) / 1000));
+    if (left === 0) { $('p-left').textContent = '시간 초과'; return; }
+    const h = Math.floor(left / 3600), m = Math.floor((left % 3600) / 60), s = left % 60;
+    $('p-left').textContent = (h ? h + '시간 ' : '') + m + '분 ' + String(s).padStart(2, '0') + '초';
+  }
+  setInterval(tick, 1000);
+
+  async function refresh() {
+    try {
+      const r = await fetch('/api/session/' + token);
+      if (!r.ok) throw new Error('status ' + r.status);
+      renderStatus(await r.json());
+    } catch (e) {
+      $('s-status').textContent = '상태를 불러오지 못했습니다.';
+    }
+  }
+  refresh();
+  setInterval(refresh, 15000);
+
+  function add(who, text) {
+    const el = document.createElement('div');
+    el.className = 'msg' + (who === '나' ? ' me' : '');
+    const w = document.createElement('div'); w.className = 'who'; w.textContent = who;
+    const b = document.createElement('div'); b.className = 'body'; b.textContent = text;
+    el.append(w, b);
+    $('log').append(el);
+    $('log').scrollTop = $('log').scrollHeight;
+    return b;
+  }
+
+  add('매니저', '안녕하세요! 서버에 필요한 게 있으면 편하게 말씀해주세요.');
+
+  async function send(text) {
+    add('나', text);
+    const pending = add('매니저', '…');
+    $('send').disabled = true;
+    try {
+      const r = await fetch('/api/session/' + token + '/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text })
+      });
+      const d = await r.json().catch(() => ({}));
+      pending.textContent = r.ok ? (d.reply || '…') : (d.detail || '잠시 후 다시 시도해주세요.');
+    } catch (e) {
+      pending.textContent = '연결에 문제가 있어요. 잠시 후 다시 시도해주세요.';
+    } finally {
+      $('send').disabled = false;
+      refresh();
+    }
+  }
+
+  $('composer').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const v = $('msg').value.trim();
+    if (!v) return;
+    $('msg').value = '';
+    send(v);
+  });
+
+  $('examples').addEventListener('click', function (e) {
+    if (e.target.tagName === 'BUTTON') send(e.target.textContent);
+  });
+
+  $('paidbtn').addEventListener('click', async function () {
+    $('paidbtn').disabled = true;
+    $('paidmsg').textContent = '확인 중…';
+    try {
+      const r = await fetch('/api/session/' + token + '/paid', { method: 'POST' });
+      const d = await r.json();
+      $('paidmsg').textContent = d.message || d.error || '';
+      if (!d.ok) $('paidbtn').disabled = true;
+      refresh();
+    } catch (e) {
+      $('paidmsg').textContent = '잠시 후 다시 시도해주세요.';
+      $('paidbtn').disabled = false;
+    }
+  });
+})();
+</script>
+</body>
+</html>
