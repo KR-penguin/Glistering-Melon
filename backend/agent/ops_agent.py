@@ -9,6 +9,7 @@ import logging
 
 from agent import routing
 from agent.llm import LLMError, run_tool_loop
+from agent.rag.store import reference_block
 from agent.tools import TOOL_IMPLS, TOOL_SCHEMAS
 
 logger = logging.getLogger(__name__)
@@ -66,7 +67,11 @@ async def handle_ops_message(message: str) -> str:
     try:
         return await run_tool_loop(
             system=SYSTEM_PROMPT,
-            first_message=f"{routing.hint_for(message, owner=True)}{message}",
+            first_message=(
+                f"{routing.hint_for(message, owner=True)}"
+                # Newest reference: the owner's message may not name a server yet.
+                f"{reference_block(None, message)}{message}"
+            ),
             tool_schemas=TOOL_SCHEMAS,
             tool_impls=TOOL_IMPLS,
             max_iterations=MAX_TOOL_ITERATIONS,

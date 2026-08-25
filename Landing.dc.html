@@ -196,7 +196,7 @@
       <form onSubmit="{{ handleSubmit }}" style="display: flex; flex-direction: column; gap: var(--space-3);">
         <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
           <h3 id="gm-dialog-title" class="dialog-title kr-h" style="margin: 0;">서버 열기</h3>
-          <button type="button" class="btn btn-icon btn-ghost" onClick="{{ closeModal }}" aria-label="닫기" style="margin: -6px -6px 0 0;">
+          <button type="button" class="btn btn-icon btn-ghost" onClick="{{ closeModal }}" aria-label="닫기" style="margin: -6px -6px 0 0; justify-content: center; padding: 0;">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 3L13 13M13 3L3 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
           </button>
         </div>
@@ -219,8 +219,6 @@
             <option value="community">커뮤니티 · 13–40명 · 16GB · 월 49,000원</option>
           </select>
         </div>
-
-        <p class="dialog-body" style="margin: 0; padding: 10px 12px; background: var(--color-accent-100); color: var(--color-accent-800); border-radius: var(--radius-md); opacity: 1;">누르면 바로 서버가 열립니다. 이후 안내되는 계좌로 입금해 주세요 — 입금 전까지는 체험으로 열어드리고, 확인되지 않으면 잠시 정지됩니다. 월드는 지워지지 않아요.</p>
 
         <sc-if value="{{ createError }}" hint-placeholder-val="{{ false }}">
         <p class="dialog-body" style="margin: 0; color: var(--color-accent-800);">{{ createError }}</p>

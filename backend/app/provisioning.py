@@ -126,7 +126,20 @@ async def _provision_background(server_id: str) -> None:
             if not ready:
                 raise RuntimeError("RCON did not become ready within timeout")
 
-            conn.execute("UPDATE servers SET status='running' WHERE id=?", (server_id,))
+            # Replace the provisioning-time request with what actually booted.
+            # Servers are created with VERSION=LATEST, and "LATEST" is useless
+            # for looking up version-specific command syntax.
+            resolved = await asyncio.to_thread(
+                docker_ctl.detect_version_from_logs, row["container_name"]
+            )
+            if resolved:
+                conn.execute(
+                    "UPDATE servers SET status='running', mc_version=? WHERE id=?",
+                    (resolved, server_id),
+                )
+                logger.info("server %s resolved to Minecraft %s", server_id, resolved)
+            else:
+                conn.execute("UPDATE servers SET status='running' WHERE id=?", (server_id,))
             conn.commit()
 
             # No customer email is sent: the session page they were redirected

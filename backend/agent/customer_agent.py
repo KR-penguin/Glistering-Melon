@@ -26,7 +26,7 @@ import logging
 
 from agent import routing
 from agent.llm import LLMError, run_tool_loop
-from agent.rag.store import search_commands
+from agent.rag.store import reference_block, search_commands
 from agent.rcon_client import run_command as rcon_run_command
 from app import billing, docker_ctl
 from app.config import settings
@@ -48,11 +48,15 @@ SYSTEM_PROMPT = """\
 알려주세요.
 
 명령어를 쓸 때:
-- 마인크래프트 명령어는 버전마다 문법이 다릅니다. 확신이 없으면 먼저 \
-get_my_server_version 으로 실제 구동 버전을 확인하고, lookup_command 로 \
-그 버전의 문법을 찾아본 뒤에 실행하세요. 기억에 의존하지 마세요.
-- lookup_command 결과의 exact_version_match 가 false 면 다른 버전 문서라서 \
-틀릴 수 있습니다. 그럴 땐 파괴적인 명령은 피하고 손님에게 알려주세요.
+- 마인크래프트 명령어 문법은 버전마다 다르고 자주 바뀝니다. 당신의 기억은 \
+믿을 수 있는 출처가 아닙니다.
+- 손님 메시지 앞에 [명령어 레퍼런스] 블록이 붙어 있으면, 그건 이 서버가 \
+실제로 돌리는 버전의 공식 문서에서 가져온 것입니다. 반드시 그 문법을 \
+그대로 쓰세요. 기억과 다르면 레퍼런스가 맞습니다.
+- 레퍼런스에 없는 명령이 필요하면 lookup_command 로 찾아보세요. 그래도 \
+안 나오면 추측해서 실행하지 말고, 모른다고 말하거나 손님에게 되물으세요.
+- 레퍼런스에 "주의"가 붙어 있으면 다른 버전 문서라 틀릴 수 있다는 뜻입니다. \
+그럴 땐 파괴적인 명령은 피하고 손님에게 알려주세요.
 
 서버를 껐다 켜거나 재시작하는 요청은 restart_my_server / start_my_server / \
 stop_my_server 를 쓰세요. 이건 게임 밖에서 동작해서 서버가 멈춰 있어도 \
@@ -262,13 +266,20 @@ async def handle_customer_message(session_token: str, message: str) -> str:
 
     context = (
         f"[서버 정보] 닉네임 {row['nickname']}, 플랜 {row['tier']}, "
-        f"상태 {row['status']}, 입금상태 {row['payment_status']}"
+        f"상태 {row['status']}, 입금상태 {row['payment_status']}, "
+        f"마인크래프트 버전 {row['mc_version']}"
     )
+
+    # Retrieve-then-generate: the command reference goes in before the model
+    # runs, rather than waiting for it to decide it needs a lookup.
+    reference = reference_block(row["mc_version"], message)
 
     try:
         return await run_tool_loop(
             system=SYSTEM_PROMPT,
-            first_message=f"{routing.hint_for(message)}{context}\n\n손님 메시지: {message}",
+            first_message=(
+                f"{routing.hint_for(message)}{reference}{context}\n\n손님 메시지: {message}"
+            ),
             tool_schemas=TOOL_SCHEMAS,
             tool_impls=build_tool_impls(row["id"]),
             max_iterations=MAX_TOOL_ITERATIONS,
