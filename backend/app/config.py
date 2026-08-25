@@ -50,7 +50,11 @@ class Settings(BaseSettings):
     host_storage_gb_budget: int = 400
     max_concurrent_servers: int = 6
 
-    default_mc_version: str = "1.21.1"
+    # LATEST so new servers track the current release without a code change.
+    # itzg resolves it at container start; the actually-running version is read
+    # back from the logs by agent.tools.get_server_version, because this value
+    # is only a provisioning-time request.
+    default_mc_version: str = "LATEST"
     default_mc_type: str = "PAPER"
     mc_port_range_start: int = 25565
     mc_port_range_end: int = 25664
