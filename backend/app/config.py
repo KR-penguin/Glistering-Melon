@@ -60,6 +60,16 @@ class Settings(BaseSettings):
     mc_port_range_end: int = 25664
 
     data_root: str = "./data"
+
+    # World data lives apart from the SQLite database so the two can sit on
+    # different disks: worlds are large and go on the HDD, while the database
+    # is tiny and stays on the SSD. Empty means "{data_root}/worlds".
+    #
+    # Must be an absolute HOST path when set, and docker-compose has to mount
+    # it at the identical path inside the container — this backend asks the
+    # host's Docker daemon to bind-mount world directories, and the daemon
+    # resolves those paths on the host.
+    worlds_root_override: str = ""
     cors_allow_origin: str = "*"
 
     # Minutes an unpaid server stays up before the sweeper stops it (never
@@ -80,7 +90,7 @@ class Settings(BaseSettings):
 
     @property
     def worlds_root(self) -> Path:
-        return Path(self.data_root) / "worlds"
+        return Path(self.worlds_root_override or (Path(self.data_root) / "worlds"))
 
 
 settings = Settings()
