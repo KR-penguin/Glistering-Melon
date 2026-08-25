@@ -22,9 +22,12 @@ class CreateServerRequest(BaseModel):
     @field_validator("nickname")
     @classmethod
     def nickname_shape(cls, v: str) -> str:
+        # Any name the customer wants to be called, not a Minecraft account —
+        # so Korean names and one-character handles have to pass. Minecraft's
+        # own 3-16 ASCII rule would reject "김철수".
         v = v.strip()
-        if not (3 <= len(v) <= 16):
-            raise ValueError("nickname must be 3-16 characters")
+        if not (1 <= len(v) <= 20):
+            raise ValueError("이름은 1-20자여야 합니다.")
         return v
 
     @field_validator("tier")
@@ -61,16 +64,18 @@ async def create_server(payload: CreateServerRequest, request: Request):
     if not is_valid_modpack_key(payload.modpack_key):
         raise HTTPException(status_code=400, detail="알 수 없는 모드팩입니다.")
 
-    if not await is_valid_java_username(payload.nickname):
-        raise HTTPException(
-            status_code=400, detail="마인크래프트 자바 에디션에 없는 닉네임이에요. 다시 확인해주세요."
-        )
+    # The name is what to call the customer, so an unrecognised one is fine and
+    # must not block signup. But when it DOES happen to be a real Java account
+    # we can make them operator of their own server, so it is still worth one
+    # lookup.
+    mc_username = payload.nickname if await is_valid_java_username(payload.nickname) else None
 
     result = await provisioning.submit_application(
         nickname=payload.nickname,
         email=payload.email,
         tier=payload.tier,
         modpack_key=payload.modpack_key,
+        mc_username=mc_username,
     )
 
     if result["status"] == "no_capacity":

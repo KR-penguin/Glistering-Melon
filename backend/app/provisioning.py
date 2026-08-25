@@ -19,7 +19,10 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-async def submit_application(nickname: str, email: str, tier: str, modpack_key: str | None) -> dict:
+async def submit_application(
+    nickname: str, email: str, tier: str, modpack_key: str | None,
+    mc_username: str | None = None,
+) -> dict:
     conn = get_connection()
     try:
         application_id = str(uuid.uuid4())
@@ -55,9 +58,9 @@ async def submit_application(nickname: str, email: str, tier: str, modpack_key: 
                    (id, application_id, nickname, tier, ram_mb, storage_gb, mc_version, mc_type,
                     modpack_key, container_name, game_port, rcon_password, status, created_at,
                     session_token, email, price_krw, payment_status, payment_code, payment_due_at,
-                    grace_extended)
+                    grace_extended, mc_username)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'provisioning', ?,
-                           ?, ?, ?, 'awaiting', ?, ?, 0)""",
+                           ?, ?, ?, 'awaiting', ?, ?, 0, ?)""",
                 (
                     server_id,
                     application_id,
@@ -77,6 +80,7 @@ async def submit_application(nickname: str, email: str, tier: str, modpack_key: 
                     billing.price_for(tier),
                     payment_code,
                     billing.grace_deadline().isoformat(),
+                    mc_username,
                 ),
             )
             conn.execute(
@@ -112,6 +116,7 @@ async def _provision_background(server_id: str) -> None:
                 mc_version=row["mc_version"],
                 mc_type=row["mc_type"],
                 nickname=row["nickname"],
+                mc_username=row["mc_username"],
                 game_port=row["game_port"],
                 rcon_password=row["rcon_password"],
                 modpack_key=row["modpack_key"],

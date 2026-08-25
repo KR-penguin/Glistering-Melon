@@ -56,6 +56,7 @@ def _build_env(
     mc_version: str,
     mc_type: str,
     nickname: str,
+    mc_username: str | None,
     rcon_password: str,
     modpack_key: str | None,
 ) -> dict:
@@ -70,13 +71,13 @@ def _build_env(
         # ask the AI manager to turn the whitelist on, so the restrictive
         # setting is one sentence away rather than the default.
         "ENABLE_WHITELIST": "false",
-        # The person who ordered the server is its operator. With the
-        # whitelist off this is the only thing that distinguishes them from
-        # any other player who joins, and without it they would have no
-        # authority at all on a server they are paying for.
-        "OPS": nickname,
         "OVERRIDE_SERVER_PROPERTIES": "true",
     }
+    # The customer is operator of their own server — but only when the name
+    # they gave is a real Java account. It is a display name now, so it may
+    # well be "김철수", and opping a name nobody owns just confuses the server.
+    if mc_username:
+        env["OPS"] = mc_username
     if modpack_key:
         pack = MODPACK_CATALOG[modpack_key]
         env["TYPE"] = "MODRINTH"
@@ -97,6 +98,7 @@ def create_and_start_server(
     mc_version: str,
     mc_type: str,
     nickname: str,
+    mc_username: str | None,
     game_port: int,
     rcon_password: str,
     modpack_key: str | None,
@@ -112,6 +114,7 @@ def create_and_start_server(
         mc_version=mc_version,
         mc_type=mc_type,
         nickname=nickname,
+        mc_username=mc_username,
         rcon_password=rcon_password,
         modpack_key=modpack_key,
     )

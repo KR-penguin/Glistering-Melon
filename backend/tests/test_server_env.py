@@ -15,6 +15,7 @@ def env_for(**overrides):
         mc_version="1.21.1",
         mc_type="PAPER",
         nickname="Steve",
+        mc_username="Steve",
         rcon_password="secret",
         modpack_key=None,
     )
@@ -28,10 +29,22 @@ def test_server_is_open_to_everyone_by_default():
     assert "WHITELIST" not in env_for()
 
 
-def test_the_customer_is_operator_of_their_own_server():
+def test_a_real_java_account_is_made_operator():
     """With the whitelist off this is the only thing that distinguishes the
     person paying for the server from any other player."""
-    assert env_for(nickname="Notch")["OPS"] == "Notch"
+    assert env_for(nickname="Notch", mc_username="Notch")["OPS"] == "Notch"
+
+
+def test_a_display_name_that_is_not_a_java_account_is_not_opped():
+    """The field is "이름 (닉네임 가능)" now, so it is often something like
+    "김철수". Opping a name nobody owns would just confuse the server."""
+    env = env_for(nickname="김철수", mc_username=None)
+    assert "OPS" not in env
+
+
+def test_ops_uses_the_verified_account_not_the_display_name():
+    env = env_for(nickname="멜론이", mc_username="jeb_")
+    assert env["OPS"] == "jeb_"
 
 
 def test_eula_accepted_and_rcon_enabled():

@@ -66,6 +66,8 @@ _ADDED_COLUMNS = {
         ("suspended_at", "TEXT"),
         # Null until the customer registers and claims the server.
         ("user_id", "TEXT"),
+        # The name only when it is a real Java account; null otherwise.
+        ("mc_username", "TEXT"),
     ],
 }
 
