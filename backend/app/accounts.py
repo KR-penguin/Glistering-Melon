@@ -66,10 +66,24 @@ def validate_password(password: str) -> str:
     return password
 
 
+def _maxmem_for(n: int, r: int, p: int) -> int:
+    """scrypt needs 128*N*r*p bytes, and OpenSSL refuses past its own 32MiB
+    default — which N=2^15, r=8 hits exactly. Ask for the real requirement
+    plus headroom instead of inheriting a limit that rejects our parameters.
+    """
+    return 128 * n * r * p * 2
+
+
 def hash_password(password: str, salt: bytes | None = None) -> str:
     salt = salt or secrets.token_bytes(16)
     derived = hashlib.scrypt(
-        password.encode("utf-8"), salt=salt, n=SCRYPT_N, r=SCRYPT_R, p=SCRYPT_P, dklen=SCRYPT_DKLEN
+        password.encode("utf-8"),
+        salt=salt,
+        n=SCRYPT_N,
+        r=SCRYPT_R,
+        p=SCRYPT_P,
+        dklen=SCRYPT_DKLEN,
+        maxmem=_maxmem_for(SCRYPT_N, SCRYPT_R, SCRYPT_P),
     )
     return f"scrypt${SCRYPT_N}${SCRYPT_R}${SCRYPT_P}${salt.hex()}${derived.hex()}"
 
@@ -86,6 +100,7 @@ def verify_password(password: str, stored: str) -> bool:
             r=int(r),
             p=int(p),
             dklen=len(bytes.fromhex(expected_hex)),
+            maxmem=_maxmem_for(int(n), int(r), int(p)),
         )
     except (ValueError, TypeError):
         return False

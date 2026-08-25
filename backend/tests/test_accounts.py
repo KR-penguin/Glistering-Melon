@@ -42,6 +42,30 @@ def make_server(path, *, sid="s1", token="tok1", user_id=None, nickname="Steve")
     conn.close()
 
 
+# --- production KDF parameters ---------------------------------------------
+
+
+def test_real_scrypt_parameters_actually_work(monkeypatch):
+    """Deliberately NOT using the fixture's reduced cost.
+
+    Every other test lowers SCRYPT_N so the suite stays fast, which meant the
+    real parameters were never executed — and they failed in production:
+    N=2^15, r=8 needs exactly 32MiB, which is OpenSSL's default ceiling, so
+    every registration died with "memory limit exceeded". This test is the
+    one that would have caught it.
+    """
+    monkeypatch.undo()
+    stored = accounts.hash_password("goodpassword123")
+    assert stored.startswith(f"scrypt${2 ** 15}$8$1$")
+    assert accounts.verify_password("goodpassword123", stored)
+    assert not accounts.verify_password("wrongpassword", stored)
+
+
+def test_maxmem_covers_the_real_requirement():
+    # scrypt needs 128*N*r*p bytes; anything less is rejected outright.
+    assert accounts._maxmem_for(2 ** 15, 8, 1) >= 128 * (2 ** 15) * 8 * 1
+
+
 # --- password handling -----------------------------------------------------
 
 
