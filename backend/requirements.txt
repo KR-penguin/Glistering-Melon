@@ -1,10 +1,13 @@
 fastapi==0.115.6
 uvicorn[standard]==0.32.1
-pydantic==2.10.3
+# 2.12.5 is google-genai's floor; the previous 2.10.3 pin made the image
+# unbuildable the moment that dependency arrived.
+pydantic==2.13.4
 pydantic-settings==2.7.0
 email-validator==2.2.0
 docker==7.1.0
-# Vertex AI (Gemini). Pinned below 3 because the client still accepts the
-# `vertexai=True` alias there; the SDK renamed it to `enterprise`.
-google-genai>=2.20.0,<3
+# Gemini, over either the Developer API or Vertex. Do not move to 3.x without
+# checking agent/llm.py: the client's `vertexai=True` is a legacy alias for
+# `enterprise=True` there and may not survive a major version.
+google-genai==2.20.0
 httpx==0.28.1
