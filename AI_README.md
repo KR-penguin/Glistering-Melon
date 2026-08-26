@@ -54,7 +54,9 @@ backend/
     provisioning.py              the create-a-server flow
     docker_ctl.py                container lifecycle (the "outside the game" family)
     billing.py                   payment state + unpaid-server grace timer
-    accounts.py                  customer accounts (scrypt, claim-a-server)
+    accounts.py                  customer accounts (Google identity, claim-a-server)
+    google_oauth.py              the sign-in-with-Google dance
+    naming.py                    how an unnamed server is referred to
     discord_notify.py            outbound webhook only (no bot)
     modpacks.py                  curated Modrinth catalog
     mojang.py                    username lookup (advisory, not a gate)
@@ -63,7 +65,7 @@ backend/
     routes/{servers,session,admin,auth}.py
     static/{session,login,admin}.html + ds.css (vendored design system)
   agent/
-    llm.py                       Claude tool-calling loop + defensive parsing
+    llm.py                       Gemini/Vertex tool-calling loop + defensive parsing
     customer_agent.py            CUSTOMER-facing agent (see §5 security note)
     ops_agent.py                 OWNER-facing agent
     tools.py                     owner tools (take server_id as an argument)
@@ -77,18 +79,20 @@ backend/
       docs/*.md                  legacy hand-written notes (older versions)
 ```
 
-224 tests, 2 skipped (the skipped two need a live LLM). `cd backend && pytest`.
+267 tests, 2 skipped (the skipped two need a live LLM). `cd backend && pytest`.
 
 ---
 
 ## 4. Customer flow
 
-1. Landing page → "1분 만에 서버 열기" → name / email / tier.
+1. Landing page → "1분 만에 서버 열기". No form: the button IS the signup, and
+   opens the cheapest tier. The pricing table's buttons each open their own.
 2. `POST /api/servers` → capacity check → returns a `session_token` immediately,
    provisioning continues in the background (~50-70s).
 3. Browser redirects to `{backend}/session/{token}` — status, price, deposit
    info, countdown, AI chat. No console, no logs (deliberate — the owner asked).
-4. Once running, the page offers account signup, which **claims** the server.
+4. Once running, the page offers Google sign-in, which **claims** the server
+   and fills in the name it was opened without.
 5. Payment is a bank transfer with a 4-digit code in the depositor name. The
    owner confirms at `/admin`.
 6. Unpaid after the grace window → container **stopped** (never deleted).
@@ -117,6 +121,27 @@ accepts a server identifier**. `agent/tools.py` (owner-facing) does take
 `server_id`, which is why they are separate modules. If the customer agent used
 the owner's tools, cross-tenant access would be one prompt injection away.
 Covered by `tests/test_customer_agent.py`.
+
+### Opening a server asks for nothing
+The button is the whole signup — no name, no email, no plan chooser. So
+`applications.nickname` and `.email` are nullable, `servers.nickname` stores
+empty rather than null (that table has live data and was not worth
+rebuilding), and `app/naming.py` decides how an unnamed server reads: the
+owner sees the container name so they can tell servers apart in Discord and
+/admin, the customer just sees "내 서버". A tier-less request opens the
+cheapest plan, because one click with no confirmation must not be able to
+commit someone to the 49,000원 tier.
+
+### Identity comes from Google, not from a password
+There is no password anywhere now. `app/google_oauth.py` runs the
+authorization-code flow server-side and `accounts.sign_in_with_google` matches
+on Google's subject id first and email second. Subject-first because a Google
+address can change and must not fork the account away from its servers;
+email-second so an account made under the old password flow is adopted rather
+than colliding with `users.email`'s UNIQUE constraint. The callback is where a
+session token gets claimed, which makes CSRF there account takeover — hence
+single-use, expiring `state` and a *verified* ID token, not a decoded one.
+Covered by `tests/test_google_oauth.py`.
 
 ### Claiming a server only works if unclaimed
 Session tokens travel in URLs. If holding one could re-bind an already-owned
@@ -166,7 +191,10 @@ Every one of these cost real debugging time.
 | **`--build` is mandatory** | Files land on the server, behaviour unchanged | Code is COPYied at image build. `--force-recreate` alone reruns the OLD image. |
 | **Bind-mount path identity** | World data appears in the wrong place | The backend runs in a container but asks the HOST daemon to bind-mount. Host paths must be mounted at the *identical* path inside the backend container. See `docker-compose.yml`. |
 | **CORS `allow_headers`** | Request never reaches the server; nothing in server logs | The landing page is a different origin. Every custom header (`X-Auth-Token`, `X-Admin-Token`) must be listed. Only visible in the browser console. |
-| **scrypt `maxmem`** | Every register/login 500s | N=2^15,r=8 needs exactly 32MiB = OpenSSL's default ceiling. Pass `maxmem` explicitly. Tests that lower the cost hide this — `test_accounts.py` has one that undoes the patch. |
+| **Gemini rejects an empty tool schema** | The whole tool set 400s, so the agent answers nothing | A parameterless tool must OMIT `parameters_json_schema`, not send `{"type":"object","properties":{}}`. Most customer tools take no arguments. `agent/llm.py::_function_declarations`. |
+| **Gemini function results ride a `user` turn** | 400 on every tool call | Not `role="tool"` — the SDK README's example says tool, the SDK's own loop uses user, and the API agrees with the loop. |
+| **`gcp-credentials.json` must exist before `up`** | ADC fails, agent never answers | Docker creates a *directory* at a bind-mount source that does not exist, and `GOOGLE_APPLICATION_CREDENTIALS` then points at one. Create the file first. |
+| **Google rejects a LAN redirect URI** | Cannot even register the OAuth client | Only public https origins and `http://localhost`. Hence `OAUTH_REDIRECT_BASE` separate from `PUBLIC_BASE_URL`; tunnel with `ssh -L 8000:localhost:8000` until a domain exists. |
 | **`mcrcon` + threads** | "signal only works in main thread" | It arms SIGALRM. All RCON runs in `asyncio.to_thread`. Replaced with a hand-rolled client; do not reintroduce a signal-based library. |
 | **Blank env vars** | Container crash-loops on boot | Pydantic rejects `""` for an int. `config.py` has a validator turning blanks into defaults. |
 | **`VERSION=LATEST` is not a version** | 26.2 server answered from 1.20.1 docs | Parsed to `(0,)` and picked the OLDEST reference. Non-numeric pointers now fall back to NEWEST, and provisioning writes the real version back after boot. |
@@ -179,16 +207,41 @@ Every one of these cost real debugging time.
 
 ## 7. Open items
 
-**The two this handoff is for:**
+**Blocking launch:**
 
-1. **Port forwarding / domain / HTTPS.** Backend is LAN-only. `Landing.dc.html`
-   hardcodes `BACKEND_URL = 'http://192.168.45.100:8000'`; `.env` has
-   `PUBLIC_BASE_URL` and `MINECRAFT_PUBLIC_HOST`. All three become real
-   addresses. Also tighten `CORS_ALLOW_ORIGIN` from `*` at that point.
-2. **The AI manager.** The `ANTHROPIC_API_KEY` is set and the backend loads it,
-   but **the owner has not confirmed the manager works end-to-end** — they asked
-   to "fix" it, so assume something is wrong and reproduce before changing code.
-   Start by creating a server and chatting at `/session/{token}`.
+1. **Google credentials are not set yet.** The code is written and tested, but
+   nothing here has ever run against real Google infrastructure. The owner
+   supplies `GOOGLE_CLOUD_PROJECT` plus `backend/gcp-credentials.json` (a
+   service account with the *Vertex AI User* role), and
+   `GOOGLE_OAUTH_CLIENT_ID` / `_SECRET`. Until then the agent returns its
+   "not configured" message and sign-in 503s; provisioning, the payment timer
+   and /admin all keep working. **`GEMINI_MODEL` defaults to
+   `gemini-3.7-flash` and has not been confirmed available on their project —
+   check it first, it is one env var.**
+2. **Port forwarding / domain / HTTPS.** The owner is doing this themselves.
+   Backend is still LAN-only. `Landing.dc.html` hardcodes
+   `BACKEND_URL = 'http://192.168.45.100:8000'`; `.env` has `PUBLIC_BASE_URL`,
+   `MINECRAFT_PUBLIC_HOST` and `OAUTH_REDIRECT_BASE`. All become real
+   addresses, and `CORS_ALLOW_ORIGIN` tightens from `*` at that point.
+
+**What the AI manager actually did when reproduced** (2026-08-26, on the
+Claude provider it has since moved off):
+
+It worked. It answered in Korean, called its tools, ran RCON commands with the
+correct 26.2 world-clock syntax the RAG supplies, and restarted the container
+through Docker rather than RCON. Two real faults surfaced:
+
+- Opening a server without an email was a **500** — `applications.email` was
+  NOT NULL while the API called it optional. Fixed; that path is now the
+  default one.
+- The agent **invents payment policy.** Asked "what happens if I don't pay",
+  it deflected to Discord; asked for status on a provisioning server it
+  announced the server was not starting *because* payment was unconfirmed,
+  which is backwards — servers run through the whole grace window. The cause
+  is that `billing.payment_summary` hands the model `status: "awaiting"` and a
+  bare `seconds_remaining` with nothing saying what either means, and the
+  system prompt never states the policy. **Still open**, and it is the most
+  customer-visible thing left: every customer asks this question.
 
 **Also open:**
 - Landing page still claims 시간별 백업 / 플러그인 충돌 롤백 / 램 자동 조정.
@@ -199,9 +252,11 @@ Every one of these cost real debugging time.
 - Minecraft on HDD is slower than SSD for chunk I/O. Owner chose HDD knowing this.
 
 **Security notes:**
-- The Anthropic API key was printed in a previous session's transcript
-  (`docker compose config` dumps resolved secrets). The owner was told to rotate
-  it. **Never run a command that dumps resolved config.**
+- **Never run a command that dumps resolved config** — no `docker compose
+  config`, no `cat .env`. An Anthropic key leaked into a transcript that way
+  and had to be rotated. That provider is gone, but the habit is what matters:
+  `backend/gcp-credentials.json` is now the credential, and Vertex has no
+  API-key alternative to fall back on if it leaks.
 - The owner's account password and `ADMIN_TOKEN` also appeared in transcripts.
 - `ADMIN_TOKEN` is a single shared secret — fine for one operator, replace with
   real accounts if a second person needs access.

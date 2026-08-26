@@ -68,7 +68,7 @@ ssh sean@192.168.45.100 "docker logs -f --tail 50 gm-backend"
 | | 주소 |
 |---|---|
 | 랜딩 페이지 | http://localhost:5599/Landing.dc.html |
-| 로그인 | http://192.168.45.100:8000/login |
+| 로그인 | http://localhost:8000/login (SSH 터널 필요 — 위 "구글 설정" 참고) |
 | 관리자 | http://192.168.45.100:8000/admin |
 | 서버 상태 | http://192.168.45.100:8000/healthz |
 
@@ -80,6 +80,73 @@ ssh sean@192.168.45.100 "grep ^ADMIN_TOKEN= /home/sean/glistering-melon/backend/
 
 ---
 
+## 처음 한 번: 구글 설정
+
+지금은 **AI 매니저와 로그인만** 이 설정을 기다리고 있습니다. 서버 개통, 입금
+타이머, 관리자 페이지는 설정 없이도 그대로 돌아갑니다.
+
+### 1. Vertex AI (AI 매니저)
+
+Google Cloud 콘솔에서:
+
+1. 프로젝트를 만들고 **Vertex AI API**를 켭니다.
+2. 서비스 계정을 만들고 **Vertex AI User** 역할을 줍니다.
+3. 그 계정의 JSON 키를 내려받아 서버의
+   `/home/sean/glistering-melon/backend/gcp-credentials.json` 에 둡니다.
+
+> **`docker compose up` 전에 이 파일이 반드시 있어야 합니다.** 없으면 도커가
+> 그 자리에 *디렉터리*를 만들어 버리고, 인증이 조용히 실패합니다.
+
+`.env` 에는 비밀이 아닌 값만 들어갑니다:
+
+```
+GOOGLE_CLOUD_PROJECT=내-프로젝트-아이디
+GOOGLE_CLOUD_LOCATION=global
+GEMINI_MODEL=gemini-3.7-flash
+```
+
+`GEMINI_MODEL` 은 프로젝트에서 쓸 수 있는 모델로 맞춰야 합니다. 확인:
+
+```bash
+ssh sean@192.168.45.100 "docker exec gm-backend python -c \"
+from app.config import settings
+from google import genai
+c = genai.Client(vertexai=True, project=settings.google_cloud_project, location=settings.google_cloud_location)
+print([m.name for m in c.models.list()][:40])\""
+```
+
+### 2. 구글 로그인
+
+콘솔의 **APIs & Services → Credentials** 에서 **OAuth 2.0 Client ID**를
+`Web application` 타입으로 만들고, 승인된 리디렉션 URI에 아래를 **한 글자도
+다르지 않게** 넣습니다:
+
+```
+http://localhost:8000/api/auth/google/callback
+```
+
+구글은 사설 IP(`192.168.45.100`)를 리디렉션 주소로 받아주지 않습니다. 그래서
+도메인이 붙기 전까지는 localhost로 두고, 터널로 접속해서 테스트합니다:
+
+```bash
+ssh -L 8000:localhost:8000 sean@192.168.45.100
+```
+
+그다음 브라우저에서 **http://localhost:8000/login** 으로 들어갑니다.
+
+`.env`:
+
+```
+GOOGLE_OAUTH_CLIENT_ID=...
+GOOGLE_OAUTH_CLIENT_SECRET=...
+OAUTH_REDIRECT_BASE=http://localhost:8000
+```
+
+도메인이 생기면 `OAUTH_REDIRECT_BASE` 를 비우면 됩니다 — 그러면
+`PUBLIC_BASE_URL` 을 따라갑니다.
+
+---
+
 ## 코드 바꾼 뒤 배포
 
 ```bash
@@ -87,6 +154,9 @@ git archive --format=tar.gz -o /tmp/b.tar.gz HEAD backend
 scp /tmp/b.tar.gz sean@192.168.45.100:/home/sean/glistering-melon/
 ssh sean@192.168.45.100 "cd /home/sean/glistering-melon && tar xzf b.tar.gz && rm b.tar.gz && cd backend && docker compose up -d --build"
 ```
+
+`gcp-credentials.json` 은 리포지토리에 없습니다(비밀이라 gitignore). 서버에
+직접 두고, 배포해도 덮어써지지 않습니다.
 
 `--build`가 반드시 필요합니다. 코드는 이미지 빌드 시점에 복사되므로 `--force-recreate`
 만으로는 **옛 코드가 그대로 돕니다** — 파일은 서버에 올라갔는데 동작은 안 바뀌는,
