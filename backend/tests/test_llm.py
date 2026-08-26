@@ -159,13 +159,45 @@ async def test_loop_gives_up_with_fallback_text(use_fake):
     assert out == "포기했어요."
 
 
-def test_missing_project_is_a_clear_error_not_a_crash(monkeypatch):
+def test_with_neither_backend_configured_the_error_names_both(monkeypatch):
     from app.config import settings
 
     llm.reset_provider()
+    monkeypatch.setattr(settings, "gemini_api_key", "")
     monkeypatch.setattr(settings, "google_cloud_project", "")
-    with pytest.raises(llm.LLMError, match="GOOGLE_CLOUD_PROJECT"):
+    with pytest.raises(llm.LLMError, match="GEMINI_API_KEY.*GOOGLE_CLOUD_PROJECT"):
         llm.get_provider()
+    llm.reset_provider()
+
+
+def test_an_api_key_selects_the_developer_backend(monkeypatch):
+    from app.config import settings
+
+    llm.reset_provider()
+    monkeypatch.setattr(settings, "gemini_api_key", "AIza-not-a-real-key")
+    monkeypatch.setattr(settings, "google_cloud_project", "")
+    assert llm.get_provider().name == "gemini-api"
+    llm.reset_provider()
+
+
+def test_a_project_alone_selects_vertex(monkeypatch):
+    from app.config import settings
+
+    llm.reset_provider()
+    monkeypatch.setattr(settings, "gemini_api_key", "")
+    monkeypatch.setattr(settings, "google_cloud_project", "some-project")
+    assert llm.get_provider().name == "vertex-gemini"
+    llm.reset_provider()
+
+
+def test_the_key_wins_when_both_are_set(monkeypatch):
+    """A half-finished cloud project should not shadow a key that works."""
+    from app.config import settings
+
+    llm.reset_provider()
+    monkeypatch.setattr(settings, "gemini_api_key", "AIza-not-a-real-key")
+    monkeypatch.setattr(settings, "google_cloud_project", "some-project")
+    assert llm.get_provider().name == "gemini-api"
     llm.reset_provider()
 
 
@@ -179,7 +211,7 @@ def test_missing_project_is_a_clear_error_not_a_crash(monkeypatch):
 def test_parameterless_tool_omits_the_schema():
     """Gemini rejects `{"type": "object", "properties": {}}` as an empty
     declaration, and most customer tools take no arguments."""
-    declarations = llm.VertexGeminiProvider._function_declarations(
+    declarations = llm.GeminiProvider._function_declarations(
         [{"name": "get_my_server_status", "description": "상태",
           "input_schema": {"type": "object", "properties": {}}}]
     )
@@ -193,7 +225,7 @@ def test_tool_with_arguments_keeps_its_schema():
         "properties": {"command": {"type": "string"}},
         "required": ["command"],
     }
-    declarations = llm.VertexGeminiProvider._function_declarations(
+    declarations = llm.GeminiProvider._function_declarations(
         [{"name": "run_command", "description": "실행", "input_schema": schema}]
     )
     assert declarations[0].parameters_json_schema == schema
@@ -203,7 +235,7 @@ def test_tool_results_go_back_on_a_user_turn():
     """Gemini carries function results on a user turn; a "tool" role is
     rejected. The SDK's own loop does the same."""
     call = ToolCall("c1", "get_my_server_status", {})
-    turns = llm.VertexGeminiProvider.tool_results([(call, {"running": True})])
+    turns = llm.GeminiProvider.tool_results([(call, {"running": True})])
     assert len(turns) == 1
     assert turns[0].role == "user"
     assert turns[0].parts[0].function_response.name == "get_my_server_status"
@@ -211,13 +243,13 @@ def test_tool_results_go_back_on_a_user_turn():
 
 def test_all_results_for_one_turn_are_batched_together():
     calls = [ToolCall("c1", "a", {}), ToolCall("c2", "b", {})]
-    turns = llm.VertexGeminiProvider.tool_results([(calls[0], {}), (calls[1], {})])
+    turns = llm.GeminiProvider.tool_results([(calls[0], {}), (calls[1], {})])
     assert len(turns) == 1 and len(turns[0].parts) == 2
 
 
 def test_non_dict_tool_output_is_wrapped():
     """`response` must be a JSON object; a bare string is a 400."""
-    turns = llm.VertexGeminiProvider.tool_results([(ToolCall("c1", "a", {}), "plain text")])
+    turns = llm.GeminiProvider.tool_results([(ToolCall("c1", "a", {}), "plain text")])
     assert turns[0].parts[0].function_response.response == {"result": "plain text"}
 
 
@@ -230,7 +262,7 @@ async def test_a_safety_blocked_turn_does_not_500(monkeypatch):
         candidates = []
         function_calls = None
 
-    provider = llm.VertexGeminiProvider.__new__(llm.VertexGeminiProvider)
+    provider = llm.GeminiProvider.__new__(llm.GeminiProvider)
 
     class FakeModels:
         async def generate_content(self, **_):

@@ -79,7 +79,7 @@ backend/
       docs/*.md                  legacy hand-written notes (older versions)
 ```
 
-267 tests, 2 skipped (the skipped two need a live LLM). `cd backend && pytest`.
+270 tests, 2 skipped (the skipped two need a live LLM). `cd backend && pytest`.
 
 ---
 
@@ -210,14 +210,20 @@ Every one of these cost real debugging time.
 **Blocking launch:**
 
 1. **Google credentials are not set yet.** The code is written and tested, but
-   nothing here has ever run against real Google infrastructure. The owner
-   supplies `GOOGLE_CLOUD_PROJECT` plus `/srv/minecraft/data/gcp-credentials.json` (a
-   service account with the *Vertex AI User* role), and
-   `GOOGLE_OAUTH_CLIENT_ID` / `_SECRET`. Until then the agent returns its
-   "not configured" message and sign-in 503s; provisioning, the payment timer
-   and /admin all keep working. **`GEMINI_MODEL` defaults to
-   `gemini-3.7-flash` and has not been confirmed available on their project —
-   check it first, it is one env var.**
+   nothing here has ever run against real Google infrastructure.
+
+   The agent reaches Gemini either way, and the choice is one env var:
+   `GEMINI_API_KEY` (Gemini Developer API — one key from AI Studio, no cloud
+   project, free tier) or `GOOGLE_CLOUD_PROJECT` (Vertex AI — needs a GCP
+   project with billing plus a service account at
+   `/srv/minecraft/data/gcp-credentials.json`, and bills through GCP, which is
+   why a registered business wants it). The key wins if both are set. Sign-in
+   separately needs `GOOGLE_OAUTH_CLIENT_ID` / `_SECRET`.
+
+   Until then the agent returns its "not configured" message and sign-in 503s;
+   provisioning, the payment timer and /admin all keep working. **`GEMINI_MODEL`
+   defaults to `gemini-3.7-flash` and has not been confirmed available — check
+   it first, it is one env var.**
 2. **Port forwarding / domain / HTTPS.** The owner is doing this themselves.
    Backend is still LAN-only. `Landing.dc.html` hardcodes
    `BACKEND_URL = 'http://192.168.45.100:8000'`; `.env` has `PUBLIC_BASE_URL`,

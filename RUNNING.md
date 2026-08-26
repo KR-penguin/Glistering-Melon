@@ -85,7 +85,26 @@ ssh sean@192.168.45.100 "grep ^ADMIN_TOKEN= /home/sean/glistering-melon/backend/
 지금은 **AI 매니저와 로그인만** 이 설정을 기다리고 있습니다. 서버 개통, 입금
 타이머, 관리자 페이지는 설정 없이도 그대로 돌아갑니다.
 
-### 1. Vertex AI (AI 매니저)
+### 1. Gemini (AI 매니저)
+
+두 가지 방법이 있습니다. **모델도 코드도 똑같고, 인증 방식만 다릅니다** —
+나중에 바꾸는 것도 환경변수 하나입니다.
+
+**A. 제일 빠른 길 — Gemini API 키** (클라우드 프로젝트 불필요, 무료 한도 있음)
+
+https://aistudio.google.com/apikey 에서 키를 발급받아 `.env` 에:
+
+```
+GEMINI_API_KEY=발급받은-키
+GEMINI_MODEL=gemini-3.7-flash
+```
+
+이걸로 끝입니다. 아래 B는 건너뛰셔도 됩니다.
+
+**B. Vertex AI** (사업자 GCP 청구로 처리하고 싶을 때)
+
+Vertex는 Google Cloud 제품이라 **GCP 프로젝트가 반드시 필요합니다.** 대신
+결제가 GCP로 잡혀서 사업자 지출로 처리됩니다.
 
 Google Cloud 콘솔에서:
 

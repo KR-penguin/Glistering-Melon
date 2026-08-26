@@ -86,26 +86,40 @@ def _loads_lenient(raw: Any) -> dict:
     return {}
 
 
-class VertexGeminiProvider:
-    """Gemini on Vertex AI, via the google-genai SDK.
+class GeminiProvider:
+    """Gemini via the google-genai SDK, over either of its two backends.
 
-    Vertex authenticates with Application Default Credentials rather than an
-    API key: in the container that means a service-account JSON mounted at
-    GOOGLE_APPLICATION_CREDENTIALS. There is no key in .env to leak.
+    Only the constructor differs between them — same models, same request
+    shape, same responses — so everything below this line is shared and the
+    choice stays a deployment detail.
+
+    Vertex authenticates with Application Default Credentials (a
+    service-account file at GOOGLE_APPLICATION_CREDENTIALS), so there is no
+    key in .env at all. The Developer API authenticates with one key and
+    needs no cloud project.
     """
 
-    name = "vertex-gemini"
-
-    def __init__(self, project: str, location: str, model: str):
+    def __init__(
+        self,
+        model: str,
+        api_key: str = "",
+        project: str = "",
+        location: str = "global",
+    ):
         from google import genai
 
-        # The SDK renamed this flag to `enterprise` when Vertex AI generative
-        # became the Gemini Enterprise Agent Platform; `vertexai` is kept as a
-        # supported alias and is what the GCP console and every Vertex doc
-        # still call it, so it stays the more recognisable choice here.
-        # requirements.txt pins google-genai <3 so the alias cannot vanish
-        # under us.
-        self._client = genai.Client(vertexai=True, project=project, location=location)
+        if api_key:
+            self.name = "gemini-api"
+            self._client = genai.Client(api_key=api_key)
+        else:
+            self.name = "vertex-gemini"
+            # The SDK renamed this flag to `enterprise` when Vertex AI
+            # generative became the Gemini Enterprise Agent Platform;
+            # `vertexai` is kept as a supported alias and is what the GCP
+            # console and every Vertex doc still call it, so it stays the more
+            # recognisable choice here. requirements.txt pins google-genai <3
+            # so the alias cannot vanish under us.
+            self._client = genai.Client(vertexai=True, project=project, location=location)
         self.model = model
 
     @staticmethod
@@ -220,15 +234,17 @@ _provider = None
 def get_provider():
     global _provider
     if _provider is None:
-        if not settings.google_cloud_project:
+        if not (settings.gemini_api_key or settings.google_cloud_project):
             raise LLMError(
-                "GOOGLE_CLOUD_PROJECT is not set — the agent cannot run. "
-                "Add it to backend/.env and restart."
+                "Neither GEMINI_API_KEY nor GOOGLE_CLOUD_PROJECT is set — the "
+                "agent cannot run. Set one in backend/.env and restart: the key "
+                "for the Gemini Developer API, the project for Vertex AI."
             )
-        _provider = VertexGeminiProvider(
-            settings.google_cloud_project,
-            settings.google_cloud_location,
-            settings.gemini_model,
+        _provider = GeminiProvider(
+            model=settings.gemini_model,
+            api_key=settings.gemini_api_key,
+            project=settings.google_cloud_project,
+            location=settings.google_cloud_location,
         )
     return _provider
 

@@ -1,7 +1,7 @@
 """Plumbing tests (no LLM needed) plus the acceptance tests for the founder's
 "act from outside the server" requirement.
 
-The acceptance tests need ANTHROPIC_API_KEY. They cover the routing the
+The acceptance tests need a working Gemini backend. They cover the routing the
 product cannot get wrong: a restart must never become an RCON command. The
 executor now refuses that outright (see tests/test_rcon_interlock.py) — these
 check the model gets there on its own, without leaning on the refusal.
@@ -19,7 +19,8 @@ from app.db import SCHEMA
 
 
 requires_llm = pytest.mark.skipif(
-    not settings.google_cloud_project, reason="GOOGLE_CLOUD_PROJECT not set"
+    not (settings.gemini_api_key or settings.google_cloud_project),
+    reason="neither GEMINI_API_KEY nor GOOGLE_CLOUD_PROJECT is set",
 )
 
 
