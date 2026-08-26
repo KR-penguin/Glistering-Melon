@@ -90,7 +90,15 @@ class Settings(BaseSettings):
     # host's Docker daemon to bind-mount world directories, and the daemon
     # resolves those paths on the host.
     worlds_root_override: str = ""
+    # Comma-separated once the landing page has a real home: it is served from
+    # Cloudflare Pages while this API answers on its own hostname, so they are
+    # different origins and every one that may call has to be listed. "*" is
+    # the development setting.
     cors_allow_origin: str = "*"
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [o.strip() for o in self.cors_allow_origin.split(",") if o.strip()]
 
     # Minutes an unpaid server stays up before the sweeper stops it (never
     # deletes). See app/billing.py for why the failure mode matters more than
@@ -101,7 +109,20 @@ class Settings(BaseSettings):
     # the real public URL once the box is reachable from outside the LAN.
     public_base_url: str = "http://192.168.45.100:8000"
 
-    # Host/port players use to connect. Defaults to the LAN address for now.
+    # Where players connect.
+    #
+    # With minecraft_domain set, each server gets its own name under it —
+    # "k7m2xq.mc.glisteringmelon.org:25567" — which takes one wildcard A
+    # record and no per-server DNS work. The port stays: an A record maps a
+    # name to an address, not to a port, and every customer server shares one
+    # address. Dropping the port needs an SRV record per server
+    # (_minecraft._tcp.<name>), created and deleted as servers come and go.
+    #
+    # That subdomain cannot sit behind Cloudflare's proxy — the free plan
+    # proxies HTTP(S) only, not the Minecraft TCP port — so it is DNS-only and
+    # resolves to the house's real address. Blank falls back to
+    # minecraft_public_host, which is the LAN address during development.
+    minecraft_domain: str = ""
     minecraft_public_host: str = "192.168.45.100"
 
     @property

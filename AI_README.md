@@ -26,7 +26,7 @@ Everything is in Korean for end users. Code and comments are in English.
 
 | Piece | Where | Notes |
 |---|---|---|
-| Landing page | Static, served locally (`python -m http.server 5599`) | `Landing.dc.html` at repo root |
+| Landing page | Cloudflare Pages, `glisteringmelon.org` | `Landing.dc.html` at repo root; deploys on push |
 | Backend | `192.168.45.100` (`dobby`), Docker | Ubuntu Server 26.04, i5-8500, 30GB RAM |
 | Customer worlds | `/mnt/hdd/minecraft/worlds/` | 2.7TB HDD |
 | SQLite DB | `/srv/minecraft/data/glistering_melon.db` | 300GB SSD LV |
@@ -56,7 +56,7 @@ backend/
     billing.py                   payment state + unpaid-server grace timer
     accounts.py                  customer accounts (Google identity, claim-a-server)
     google_oauth.py              the sign-in-with-Google dance
-    naming.py                    how an unnamed server is referred to
+    naming.py                    unnamed-server labels, slugs, connect address
     discord_notify.py            outbound webhook only (no bot)
     modpacks.py                  curated Modrinth catalog
     mojang.py                    username lookup (advisory, not a gate)
@@ -79,7 +79,7 @@ backend/
       docs/*.md                  legacy hand-written notes (older versions)
 ```
 
-270 tests, 2 skipped (the skipped two need a live LLM). `cd backend && pytest`.
+284 tests, 2 skipped (the skipped two need a live LLM). `cd backend && pytest`.
 
 ---
 
@@ -121,6 +121,24 @@ accepts a server identifier**. `agent/tools.py` (owner-facing) does take
 `server_id`, which is why they are separate modules. If the customer agent used
 the owner's tools, cross-tenant access would be one prompt injection away.
 Covered by `tests/test_customer_agent.py`.
+
+### One wildcard record, and the port stays
+Each server is reachable at `<slug>.mc.glisteringmelon.org:<port>`, covered by
+a single `*.mc` A record, so opening a server needs no DNS work at all. The
+port remains because an A record maps a name to an address, not to a port, and
+every customer server shares one address. Dropping it needs an SRV record per
+server (`_minecraft._tcp.<slug>.mc`), created and deleted alongside the
+container — worth doing, not done.
+
+That record has to be DNS-only: Cloudflare's free proxy carries HTTP(S), not
+the Minecraft TCP port, so proxying it breaks connections outright. The API
+hostname *is* proxied, and its origin port matters — Cloudflare reaches an
+origin only on its own list of ports, and 8000 is not among them, so the
+router forwards 443 to 8000 rather than exposing 8000.
+
+Slugs come from an alphabet with no `0/o/1/l/i`, because a friend types this
+in off a screenshot, and they are never reassigned — a recycled slug would
+point someone at a stranger's server.
 
 ### Opening a server asks for nothing
 The button is the whole signup — no name, no email, no plan chooser. So
@@ -228,11 +246,15 @@ Every one of these cost real debugging time.
    provisioning, the payment timer and /admin all keep working. **`GEMINI_MODEL`
    defaults to `gemini-3.7-flash` and has not been confirmed available — check
    it first, it is one env var.**
-2. **Port forwarding / domain / HTTPS.** The owner is doing this themselves.
-   Backend is still LAN-only. `Landing.dc.html` hardcodes
-   `BACKEND_URL = 'http://192.168.45.100:8000'`; `.env` has `PUBLIC_BASE_URL`,
-   `MINECRAFT_PUBLIC_HOST` and `OAUTH_REDIRECT_BASE`. All become real
-   addresses, and `CORS_ALLOW_ORIGIN` tightens from `*` at that point.
+2. **DNS and port forwarding are not done yet.** `glisteringmelon.org` is
+   registered and the landing page is on Cloudflare Pages, but the zone had no
+   NS or SOA when last checked, so nothing resolves. The code is ready: the
+   landing page picks its backend from where it was served, and the addressing
+   reads `MINECRAFT_DOMAIN`. What remains is the owner's — the two A records,
+   the router, and the `.env` values. RUNNING.md has the table.
+
+   The house address is dynamic (KT residential). Both A records die when it
+   changes, so DDNS against the Cloudflare API is not optional for long.
 
 **What the AI manager actually did when reproduced** (2026-08-26, on the
 Claude provider it has since moved off):

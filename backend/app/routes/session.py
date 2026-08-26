@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, field_validator
 
 from agent.customer_agent import get_server_by_token, handle_customer_message
-from app import billing
+from app import billing, naming
 from app.config import settings
 
 router = APIRouter()
@@ -63,7 +63,7 @@ async def session_status(token: str):
         "tier": row["tier"],
         "status": row["status"],
         "running": row["status"] == "running",
-        "address": f"{settings.minecraft_public_host}:{row['game_port']}",
+        "address": naming.server_address(row),
         "modpack_key": row["modpack_key"],
         "payment": billing.payment_summary(row),
         "support_url": settings.discord_invite_url or None,

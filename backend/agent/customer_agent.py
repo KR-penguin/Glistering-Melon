@@ -28,7 +28,7 @@ from agent import routing
 from agent.llm import LLMError, run_tool_loop
 from agent.rag.store import reference_block, search_commands
 from agent.rcon_client import run_command as rcon_run_command
-from app import billing, docker_ctl
+from app import billing, docker_ctl, naming
 from app.config import settings
 from app.db import get_connection
 
@@ -176,7 +176,7 @@ def build_tool_impls(server_id: str) -> dict:
             "status": row["status"],
             "tier": row["tier"],
             "price_krw": row["price_krw"],
-            "address": f"{settings.minecraft_public_host}:{row['game_port']}",
+            "address": naming.server_address(row),
             "payment": billing.payment_summary(row),
         }
 

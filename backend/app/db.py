@@ -75,6 +75,9 @@ _ADDED_COLUMNS = {
         ("user_id", "TEXT"),
         # The name only when it is a real Java account; null otherwise.
         ("mc_username", "TEXT"),
+        # This server's subdomain label. Fixed at provisioning; customers
+        # share the resulting address, so it must never be reassigned.
+        ("mc_slug", "TEXT"),
     ],
     "users": [
         # Google's stable subject id. ALTER TABLE cannot add a UNIQUE column,
@@ -119,6 +122,7 @@ _INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_servers_payment_status ON servers(payment_status)",
     "CREATE INDEX IF NOT EXISTS idx_servers_user ON servers(user_id)",
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users(google_sub)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_servers_mc_slug ON servers(mc_slug)",
 ]
 
 

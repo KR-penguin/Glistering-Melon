@@ -229,10 +229,18 @@
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;showPricing&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
-// Where the provisioning backend lives. Currently the home server's LAN
-// address, so this page can only open servers from inside that network —
-// change to the public origin once the box is reachable from the internet.
-const BACKEND_URL = 'http://192.168.45.100:8000';
+// Where the provisioning backend lives.
+//
+// This page is served from Cloudflare Pages in production and from a local
+// http.server while developing, and those need different backends: the public
+// hostname is not reachable from inside the house on the way out and back
+// (most consumer routers do not hairpin), and the LAN address is not reachable
+// from anywhere else at all. Picking by where the page itself came from keeps
+// both working without a build step — this is a static file with no
+// environment to read.
+const BACKEND_URL = ['localhost', '127.0.0.1'].includes(location.hostname)
+  ? 'http://192.168.45.100:8000'
+  : 'https://api.glisteringmelon.org';
 
 // Support server. Deposits do arrive without the payment code (customer
 // forgets, a parent sends instead, the bank truncates the name), so there has

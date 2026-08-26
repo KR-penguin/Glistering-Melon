@@ -1,8 +1,11 @@
 # 실행 방법
 
-프론트엔드는 이 PC에서, 백엔드는 집 서버(`192.168.45.100`)에서 돕니다.
-백엔드는 `restart: unless-stopped` 라서 **서버가 켜져 있으면 자동으로 떠 있습니다** —
-평소에는 프론트만 켜면 됩니다.
+랜딩 페이지는 **Cloudflare Pages**(https://glisteringmelon.org), API와 손님
+서버는 집 서버(`192.168.45.100`)에서 돕니다. 백엔드는 `restart: unless-stopped`
+라서 **서버가 켜져 있으면 자동으로 떠 있습니다.**
+
+아래 1번은 랜딩 페이지를 **고칠 때 쓰는 로컬 미리보기**입니다. 배포는 git push
+하면 Cloudflare Pages가 알아서 합니다.
 
 ---
 
@@ -20,8 +23,15 @@ python -m http.server 5599
 
 멈추려면 그 창에서 `Ctrl+C`.
 
-> 백엔드가 LAN 주소(`192.168.45.100`)라서 **같은 네트워크에 있어야** 동작합니다.
-> 외부에서 접속하려면 포트포워딩 + 도메인이 필요합니다.
+> 로컬로 열면 백엔드도 LAN 주소(`192.168.45.100:8000`)를 씁니다 — 같은 네트워크에
+> 있어야 동작합니다. Cloudflare Pages에 올라간 쪽은 `https://api.glisteringmelon.org`
+> 를 씁니다. `Landing.dc.html` 이 어디서 열렸는지 보고 알아서 고릅니다.
+
+**배포:** 커밋하고 push하면 끝입니다.
+
+```bash
+git push
+```
 
 ---
 
@@ -65,18 +75,81 @@ ssh sean@192.168.45.100 "docker logs -f --tail 50 gm-backend"
 
 ## 주소 모음
 
-| | 주소 |
-|---|---|
-| 랜딩 페이지 | http://localhost:5599/Landing.dc.html |
-| 로그인 | http://localhost:8000/login (SSH 터널 필요 — 위 "구글 설정" 참고) |
-| 관리자 | http://192.168.45.100:8000/admin |
-| 서버 상태 | http://192.168.45.100:8000/healthz |
+| | 공개 주소 | 집에서 (LAN) |
+|---|---|---|
+| 랜딩 페이지 | https://glisteringmelon.org | http://localhost:5599/Landing.dc.html |
+| 로그인 | https://api.glisteringmelon.org/login | — (구글이 사설 IP를 안 받습니다) |
+| 관리자 | https://api.glisteringmelon.org/admin | http://192.168.45.100:8000/admin |
+| 서버 상태 | https://api.glisteringmelon.org/healthz | http://192.168.45.100:8000/healthz |
+
+공개 주소는 DNS와 포트포워딩이 끝난 뒤부터 동작합니다 (아래 "도메인" 참고).
 
 관리자 토큰은 서버의 `.env`에 있습니다:
 
 ```bash
 ssh sean@192.168.45.100 "grep ^ADMIN_TOKEN= /home/sean/glistering-melon/backend/.env"
 ```
+
+---
+
+## 처음 한 번: 도메인 (glisteringmelon.org)
+
+랜딩 페이지는 Cloudflare Pages, API와 마인크래프트는 집 서버입니다.
+
+### DNS 레코드 (Cloudflare)
+
+| 이름 | 종류 | 값 | 프록시 |
+|---|---|---|---|
+| `api` | A | 집 공인 IP | **켬** (주황) |
+| `*.mc` | A | 집 공인 IP | **끔** (회색) |
+
+`*.mc` 를 **반드시 회색(DNS only)** 으로 두셔야 합니다. Cloudflare 무료 프록시는
+HTTP(S)만 통과시켜서, 주황색으로 두면 마인크래프트 접속이 아예 안 됩니다.
+대신 그 이름은 집 IP를 그대로 노출합니다 — 마인크래프트 호스팅에서는 피할 수
+없는 부분입니다.
+
+### 포트포워딩 (공유기)
+
+| 외부 | → 내부 | 용도 |
+|---|---|---|
+| 443 | `192.168.45.100:8000` | API |
+| 25565–25664 | 같은 포트 그대로 | 손님 서버 |
+
+> **8000번을 그대로 열면 안 됩니다.** Cloudflare 프록시는 정해진 포트 목록으로만
+> 원본에 접속하는데 8000은 그 목록에 없습니다. 443을 8000으로 넘기세요.
+> SSL/TLS 모드는 **Flexible** 로 시작하면 바로 동작합니다(방문자↔Cloudflare 구간만
+> 암호화). 원본까지 암호화하려면 집 서버에 Caddy 같은 리버스 프록시를 두고
+> **Full (strict)** 로 올리시면 됩니다.
+
+### 집 IP가 바뀝니다
+
+KT 가정용은 고정 IP가 아닙니다. IP가 바뀌면 위 A 레코드 두 개가 전부 죽습니다.
+Cloudflare API 토큰으로 주기적으로 갱신하는 DDNS를 걸어두시는 걸 권합니다.
+
+### `.env`
+
+```
+PUBLIC_BASE_URL=https://api.glisteringmelon.org
+MINECRAFT_DOMAIN=mc.glisteringmelon.org
+CORS_ALLOW_ORIGIN=https://glisteringmelon.org,https://www.glisteringmelon.org
+OAUTH_REDIRECT_BASE=
+```
+
+`OAUTH_REDIRECT_BASE` 는 비워두면 `PUBLIC_BASE_URL` 을 따라갑니다.
+
+### 접속 주소 모양
+
+손님마다 서브도메인이 하나씩 생깁니다:
+
+```
+k7m2xq.mc.glisteringmelon.org:25567
+```
+
+`*.mc` 와일드카드 하나로 전부 커버되고, 서버를 새로 열어도 DNS 작업은 없습니다.
+**포트는 남습니다** — A 레코드는 이름을 IP에 연결할 뿐 포트까지는 못 정하고,
+손님 서버가 전부 같은 IP를 쓰기 때문입니다. 포트까지 없애려면 서버를 열 때마다
+`_minecraft._tcp.<slug>.mc` SRV 레코드를 만들고 지울 때 지워야 합니다
+(Cloudflare API로 자동화 가능 — 원하시면 붙여드리겠습니다).
 
 ---
 

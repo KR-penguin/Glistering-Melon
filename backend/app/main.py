@@ -59,7 +59,7 @@ CORS_HEADERS = ["Content-Type", "X-Auth-Token", "X-Admin-Token"]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.cors_allow_origin],
+    allow_origins=settings.cors_origins,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=CORS_HEADERS,
 )

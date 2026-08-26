@@ -54,15 +54,16 @@ async def submit_application(
             spec = capacity.TIER_SPECS[tier]
             session_token = billing.generate_session_token()
             payment_code = billing.generate_payment_code(conn)
+            mc_slug = naming.generate_slug(conn)
 
             conn.execute(
                 """INSERT INTO servers
                    (id, application_id, nickname, tier, ram_mb, storage_gb, mc_version, mc_type,
                     modpack_key, container_name, game_port, rcon_password, status, created_at,
                     session_token, email, price_krw, payment_status, payment_code, payment_due_at,
-                    grace_extended, mc_username)
+                    grace_extended, mc_username, mc_slug)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'provisioning', ?,
-                           ?, ?, ?, 'awaiting', ?, ?, 0, ?)""",
+                           ?, ?, ?, 'awaiting', ?, ?, 0, ?, ?)""",
                 (
                     server_id,
                     application_id,
@@ -86,6 +87,7 @@ async def submit_application(
                     payment_code,
                     billing.grace_deadline().isoformat(),
                     mc_username,
+                    mc_slug,
                 ),
             )
             conn.execute(
