@@ -92,10 +92,15 @@ Google Cloud 콘솔에서:
 1. 프로젝트를 만들고 **Vertex AI API**를 켭니다.
 2. 서비스 계정을 만들고 **Vertex AI User** 역할을 줍니다.
 3. 그 계정의 JSON 키를 내려받아 서버의
-   `/home/sean/glistering-melon/backend/gcp-credentials.json` 에 둡니다.
+   `/srv/minecraft/data/gcp-credentials.json` 에 둡니다:
 
-> **`docker compose up` 전에 이 파일이 반드시 있어야 합니다.** 없으면 도커가
-> 그 자리에 *디렉터리*를 만들어 버리고, 인증이 조용히 실패합니다.
+```bash
+scp ~/Downloads/키파일.json sean@192.168.45.100:/srv/minecraft/data/gcp-credentials.json
+```
+
+> 리포지토리 밖(`HOST_DATA_ROOT` 안)에 두는 이유가 있습니다. 그 경로는 이미
+> 컨테이너에 마운트돼 있어서 따로 마운트할 필요가 없고, 파일 하나를 직접
+> 마운트하면 파일이 없을 때 도커가 그 자리에 *디렉터리*를 만들어 버립니다.
 
 `.env` 에는 비밀이 아닌 값만 들어갑니다:
 
@@ -155,8 +160,8 @@ scp /tmp/b.tar.gz sean@192.168.45.100:/home/sean/glistering-melon/
 ssh sean@192.168.45.100 "cd /home/sean/glistering-melon && tar xzf b.tar.gz && rm b.tar.gz && cd backend && docker compose up -d --build"
 ```
 
-`gcp-credentials.json` 은 리포지토리에 없습니다(비밀이라 gitignore). 서버에
-직접 두고, 배포해도 덮어써지지 않습니다.
+`gcp-credentials.json` 은 리포지토리 밖(`/srv/minecraft/data/`)에 있어서
+배포해도 덮어써지지 않습니다.
 
 `--build`가 반드시 필요합니다. 코드는 이미지 빌드 시점에 복사되므로 `--force-recreate`
 만으로는 **옛 코드가 그대로 돕니다** — 파일은 서버에 올라갔는데 동작은 안 바뀌는,

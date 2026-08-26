@@ -193,7 +193,7 @@ Every one of these cost real debugging time.
 | **CORS `allow_headers`** | Request never reaches the server; nothing in server logs | The landing page is a different origin. Every custom header (`X-Auth-Token`, `X-Admin-Token`) must be listed. Only visible in the browser console. |
 | **Gemini rejects an empty tool schema** | The whole tool set 400s, so the agent answers nothing | A parameterless tool must OMIT `parameters_json_schema`, not send `{"type":"object","properties":{}}`. Most customer tools take no arguments. `agent/llm.py::_function_declarations`. |
 | **Gemini function results ride a `user` turn** | 400 on every tool call | Not `role="tool"` — the SDK README's example says tool, the SDK's own loop uses user, and the API agrees with the loop. |
-| **`gcp-credentials.json` must exist before `up`** | ADC fails, agent never answers | Docker creates a *directory* at a bind-mount source that does not exist, and `GOOGLE_APPLICATION_CREDENTIALS` then points at one. Create the file first. |
+| **Never bind-mount the credentials file directly** | ADC authenticates against a *directory* | Docker creates a directory at a bind-mount source that does not exist. The key therefore lives at `${HOST_DATA_ROOT}/gcp-credentials.json`, inside a tree that is already mounted, where a missing file stays a missing file. |
 | **Google rejects a LAN redirect URI** | Cannot even register the OAuth client | Only public https origins and `http://localhost`. Hence `OAUTH_REDIRECT_BASE` separate from `PUBLIC_BASE_URL`; tunnel with `ssh -L 8000:localhost:8000` until a domain exists. |
 | **`mcrcon` + threads** | "signal only works in main thread" | It arms SIGALRM. All RCON runs in `asyncio.to_thread`. Replaced with a hand-rolled client; do not reintroduce a signal-based library. |
 | **Blank env vars** | Container crash-loops on boot | Pydantic rejects `""` for an int. `config.py` has a validator turning blanks into defaults. |
@@ -211,7 +211,7 @@ Every one of these cost real debugging time.
 
 1. **Google credentials are not set yet.** The code is written and tested, but
    nothing here has ever run against real Google infrastructure. The owner
-   supplies `GOOGLE_CLOUD_PROJECT` plus `backend/gcp-credentials.json` (a
+   supplies `GOOGLE_CLOUD_PROJECT` plus `/srv/minecraft/data/gcp-credentials.json` (a
    service account with the *Vertex AI User* role), and
    `GOOGLE_OAUTH_CLIENT_ID` / `_SECRET`. Until then the agent returns its
    "not configured" message and sign-in 503s; provisioning, the payment timer
@@ -255,7 +255,7 @@ through Docker rather than RCON. Two real faults surfaced:
 - **Never run a command that dumps resolved config** — no `docker compose
   config`, no `cat .env`. An Anthropic key leaked into a transcript that way
   and had to be rotated. That provider is gone, but the habit is what matters:
-  `backend/gcp-credentials.json` is now the credential, and Vertex has no
+  `${HOST_DATA_ROOT}/gcp-credentials.json` is now the credential, and Vertex has no
   API-key alternative to fall back on if it leaks.
 - The owner's account password and `ADMIN_TOKEN` also appeared in transcripts.
 - `ADMIN_TOKEN` is a single shared secret — fine for one operator, replace with
