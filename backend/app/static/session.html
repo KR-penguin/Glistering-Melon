@@ -61,26 +61,15 @@
 
   <section class="panel" id="signup" aria-label="계정 만들기" hidden
            style="border-color: var(--color-accent);">
-    <h2 class="kr-h" style="font-size: 18px; margin: 0 0 6px;">서버 관리를 하고 싶다면 계정을 가입해주세요!</h2>
+    <h2 class="kr-h" style="font-size: 18px; margin: 0 0 6px;">이 서버를 계속 쓰려면 구글로 로그인하세요</h2>
     <p class="hint" style="margin: 0 0 16px;">
-      지금은 이 브라우저에서만 서버에 접근할 수 있어요. 계정을 만들면 다른 기기나
+      지금은 이 브라우저에서만 서버에 접근할 수 있어요. 구글 계정을 연결하면 다른 기기나
       다른 브라우저에서도 로그인해서 관리할 수 있습니다.
     </p>
-    <form id="signupform" style="display: grid; gap: 12px; max-width: 420px;">
-      <div class="field">
-        <label for="su-email">이메일</label>
-        <input id="su-email" class="input" type="email" required autocomplete="email" placeholder="you@example.com">
-      </div>
-      <div class="field">
-        <label for="su-pw">비밀번호</label>
-        <input id="su-pw" class="input" type="password" required autocomplete="new-password" minlength="8" placeholder="8자 이상">
-      </div>
-      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-        <button type="submit" class="btn btn-primary" id="su-btn">가입하고 서버 연결하기</button>
-        <a href="/login" class="hint">이미 계정이 있어요</a>
-        <span class="hint" id="su-msg"></span>
-      </div>
-    </form>
+    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+      <button type="button" class="btn btn-primary" id="su-btn">구글로 계속하기</button>
+      <span class="hint" id="su-msg"></span>
+    </div>
   </section>
 
   <section class="panel pay" id="paypanel" aria-label="입금 안내" hidden>
@@ -251,31 +240,27 @@
     if (e.target.tagName === 'BUTTON') send(e.target.textContent);
   });
 
-  $('signupform').addEventListener('submit', async function (e) {
-    e.preventDefault();
+  $('su-btn').addEventListener('click', function () {
     $('su-btn').disabled = true;
-    $('su-msg').textContent = '가입 중…';
-    try {
-      const r = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: $('su-email').value.trim(),
-          password: $('su-pw').value,
-          session_token: token
-        })
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.detail || '가입에 실패했어요.');
-      try { localStorage.setItem('gm_auth_token', d.token); } catch (err) {}
-      $('su-msg').textContent = '가입 완료! 이제 어디서든 로그인해서 관리할 수 있어요.';
-      $('signup').hidden = true;
-      refresh();
-    } catch (err) {
-      $('su-msg').textContent = err.message;
-      $('su-btn').disabled = false;
-    }
+    $('su-msg').textContent = '구글로 이동 중…';
+    // The session token goes along so signing in also claims THIS server —
+    // and, if it has no name yet, names it from the Google profile.
+    location.href = '/api/auth/google/start?session_token=' + encodeURIComponent(token);
   });
+
+  // Coming back from Google, the auth token arrives in the fragment.
+  (function consumeFragment() {
+    if (!location.hash) return;
+    const params = new URLSearchParams(location.hash.slice(1));
+    const authToken = params.get('gm_auth');
+    if (authToken) {
+      try { localStorage.setItem('gm_auth_token', authToken); } catch (e) {}
+    }
+    const error = params.get('gm_error');
+    if (error) $('su-msg').textContent = error;
+    // Strip it so a reload or a shared URL cannot carry the token onward.
+    history.replaceState(null, '', location.pathname + location.search);
+  })();
 
   $('paidbtn').addEventListener('click', async function () {
     $('paidbtn').disabled = true;

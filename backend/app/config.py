@@ -38,6 +38,17 @@ class Settings(BaseSettings):
     google_cloud_location: str = "global"
     gemini_model: str = "gemini-3.7-flash"
 
+    # Sign in with Google. Accounts have no passwords — see app/accounts.py.
+    google_oauth_client_id: str = ""
+    google_oauth_client_secret: str = ""
+
+    # Where Google sends the browser back. Separate from public_base_url
+    # because Google only accepts public https origins and http://localhost —
+    # a LAN address like http://192.168.45.100:8000 is refused at registration
+    # time. Blank means "use public_base_url", which is correct once a real
+    # domain is in place. Until then this points at localhost.
+    oauth_redirect_base: str = ""
+
     discord_webhook_url: str = ""
 
     # Shared secret for /admin. One operator, one token — replace with real

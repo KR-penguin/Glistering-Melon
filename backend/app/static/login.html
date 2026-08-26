@@ -32,20 +32,10 @@
   <section id="loginpanel" class="panel">
     <h1 class="kr-h" style="font-size: 26px; margin: 0 0 6px;">로그인</h1>
     <p class="hint" style="margin: 0 0 18px;">계정으로 로그인하면 어느 기기에서든 내 서버를 관리할 수 있어요.</p>
-    <form id="form" style="display: grid; gap: 12px;">
-      <div class="field">
-        <label for="email">이메일</label>
-        <input id="email" class="input" type="email" required autocomplete="email" placeholder="you@example.com">
-      </div>
-      <div class="field">
-        <label for="pw">비밀번호</label>
-        <input id="pw" class="input" type="password" required autocomplete="current-password">
-      </div>
-      <div style="display: flex; align-items: center; gap: 12px;">
-        <button type="submit" class="btn btn-primary" id="btn">로그인</button>
-        <span class="hint" id="msg"></span>
-      </div>
-    </form>
+    <div style="display: grid; gap: 12px; justify-items: start;">
+      <button type="button" class="btn btn-primary" id="btn">구글로 계속하기</button>
+      <span class="hint" id="msg"></span>
+    </div>
   </section>
 
   <section id="mypanel" class="panel" hidden>
@@ -112,32 +102,41 @@
     return true;
   }
 
-  $('form').addEventListener('submit', async function (e) {
-    e.preventDefault();
+  // Google hands the token back in the fragment, which never reaches a
+  // server, an access log, or a Referer header the way a query string would.
+  function consumeFragment() {
+    const hash = location.hash || '';
+    if (!hash) return;
+    const params = new URLSearchParams(hash.slice(1));
+
+    const authToken = params.get('gm_auth');
+    if (authToken) {
+      try { localStorage.setItem('gm_auth_token', authToken); } catch (e) {}
+    }
+    const error = params.get('gm_error');
+    if (error) {
+      $('msg').className = 'hint err';
+      $('msg').textContent = error;
+    } else if (params.get('gm_cancelled')) {
+      $('msg').className = 'hint';
+      $('msg').textContent = '로그인을 취소했어요.';
+    }
+
+    // Strip it so a reload or a shared URL cannot carry the token onward.
+    history.replaceState(null, '', location.pathname + location.search);
+  }
+
+  $('btn').addEventListener('click', function () {
     $('btn').disabled = true;
     $('msg').className = 'hint';
-    $('msg').textContent = '확인 중…';
-    try {
-      // If the visitor arrived from a session they were already using,
-      // claim that server on login too.
-      let sessionToken = null;
-      try { sessionToken = localStorage.getItem('gm_session_token'); } catch (err) {}
-      const r = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: $('email').value.trim(), password: $('pw').value, session_token: sessionToken })
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.detail || '로그인에 실패했어요.');
-      try { localStorage.setItem('gm_auth_token', d.token); } catch (err) {}
-      $('msg').textContent = '';
-      await loadMe(true);
-    } catch (err) {
-      $('msg').className = 'hint err';
-      $('msg').textContent = err.message;
-    } finally {
-      $('btn').disabled = false;
-    }
+    $('msg').textContent = '구글로 이동 중…';
+
+    // If the visitor came from a server they were already using, claim it as
+    // part of signing in.
+    let sessionToken = null;
+    try { sessionToken = localStorage.getItem('gm_session_token'); } catch (err) {}
+    const query = sessionToken ? '?session_token=' + encodeURIComponent(sessionToken) : '';
+    location.href = '/api/auth/google/start' + query;
   });
 
   $('logout').addEventListener('click', async function () {
@@ -146,7 +145,11 @@
     location.reload();
   });
 
-  loadMe();
+  // Order matters: the token has to be stored before the first /api/auth/me.
+  // `true` so someone arriving back from Google with exactly one server lands
+  // on it rather than on a list of one.
+  consumeFragment();
+  loadMe(true);
 })();
 </script>
 </body>
