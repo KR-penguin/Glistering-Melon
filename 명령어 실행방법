@@ -1,0 +1,2 @@
+FE : start-frontend.bat 실행시키기
+BE : ssh sean@192.168.45.100 "docker ps --filter name=gm- && curl -s localhost:8000/healthz"
