@@ -17,15 +17,15 @@
 python -m http.server 5599
 ```
 
-리포지토리 폴더에서 실행해야 합니다. 그다음 브라우저로:
+리포지토리 폴더에서 실행해야 합니다(`public/` 을 서빙합니다). 그다음 브라우저로:
 
-**http://localhost:5599/Landing.dc.html**
+**http://localhost:5599/**
 
 멈추려면 그 창에서 `Ctrl+C`.
 
 > 로컬로 열면 백엔드도 LAN 주소(`192.168.45.100:8000`)를 씁니다 — 같은 네트워크에
 > 있어야 동작합니다. Cloudflare Pages에 올라간 쪽은 `https://api.glisteringmelon.org`
-> 를 씁니다. `Landing.dc.html` 이 어디서 열렸는지 보고 알아서 고릅니다.
+> 를 씁니다. 페이지가 어디서 열렸는지 보고 알아서 고릅니다.
 
 **배포:** 커밋하고 push하면 끝입니다.
 
@@ -77,7 +77,7 @@ ssh sean@192.168.45.100 "docker logs -f --tail 50 gm-backend"
 
 | | 공개 주소 | 집에서 (LAN) |
 |---|---|---|
-| 랜딩 페이지 | https://glisteringmelon.org | http://localhost:5599/Landing.dc.html |
+| 랜딩 페이지 | https://glisteringmelon.org | http://localhost:5599/ |
 | 로그인 | https://api.glisteringmelon.org/login | — (구글이 사설 IP를 안 받습니다) |
 | 관리자 | https://api.glisteringmelon.org/admin | http://192.168.45.100:8000/admin |
 | 서버 상태 | https://api.glisteringmelon.org/healthz | http://192.168.45.100:8000/healthz |

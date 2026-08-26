@@ -4,7 +4,13 @@
     {
       "name": "static-preview",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "5599"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5599",
+        "--directory",
+        "public"
+      ],
       "port": 5599
     }
   ]

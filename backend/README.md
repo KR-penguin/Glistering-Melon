@@ -23,7 +23,7 @@ over SSH; it runs *on* the box and uses the local `docker.sock`.
 
 Hourly backups, plugin-conflict rollback, automatic RAM tuning, CurseForge
 modpacks (Modrinth only for now), per-customer Discord threads, an admin
-web UI, TLS/reverse proxy. `Landing.dc.html` still posts straight to the
+web UI, TLS/reverse proxy. The landing page (`public/index.html`) still posts straight to the
 Discord webhook — it is **not** wired to this backend yet; do that only
 once this is deployed and reachable (see the plan doc).
 
@@ -53,7 +53,7 @@ warning on startup rather than crashing):
 
 - **ANTHROPIC_API_KEY** — console.anthropic.com. This is the one part of
   the pipeline with a real per-use cost (see `.env.example`).
-- **DISCORD_WEBHOOK_URL** — the same one already in `Landing.dc.html`.
+- **DISCORD_WEBHOOK_URL** — the same one already in the landing page.
 - **DISCORD_BOT_TOKEN** + **DISCORD_OPS_CHANNEL_ID** — Discord Developer
   Portal → New Application → Bot → copy token; invite it to your server
   with "Send Messages" + "Read Message History"; right-click the ops

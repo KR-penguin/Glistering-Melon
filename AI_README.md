@@ -26,7 +26,7 @@ Everything is in Korean for end users. Code and comments are in English.
 
 | Piece | Where | Notes |
 |---|---|---|
-| Landing page | Cloudflare Pages, `glisteringmelon.org` | `Landing.dc.html` at repo root; deploys on push |
+| Landing page | Cloudflare, `glisteringmelon.org` | `public/index.html`; `wrangler deploy` on push |
 | Backend | `192.168.45.100` (`dobby`), Docker | Ubuntu Server 26.04, i5-8500, 30GB RAM |
 | Customer worlds | `/mnt/hdd/minecraft/worlds/` | 2.7TB HDD |
 | SQLite DB | `/srv/minecraft/data/glistering_melon.db` | 300GB SSD LV |
@@ -44,7 +44,8 @@ customers, and it is one of the two tasks this handoff is for.
 ## 3. Architecture
 
 ```
-Landing.dc.html                  landing page (Design Component format, see §6)
+public/index.html                landing page (Design Component format, see §6)
+  wrangler.jsonc                 tells Cloudflare which directory to publish
 backend/
   app/
     main.py                      FastAPI app, lifespan starts sweeper + watchdog
@@ -219,7 +220,8 @@ Every one of these cost real debugging time.
 | **26.x sorts NEWER than 1.21.x** | Version comparison backwards | Calendar versioning began 2026; 26.1 replaced what would have been 1.22. |
 | **Korean queries vs English docs** | RAG silently never fires | `store.py::_KO_TERMS` bridges Korean→English, substring-matched because Korean agglutinates particles. Without it every real customer message retrieved nothing. |
 | **Private repo** | Server cannot `git pull` | Deploy via `git archive` + `scp`. A GitHub deploy key would fix this properly. |
-| **Design Component template engine** | `{{ }}` expressions silently do nothing | `Landing.dc.html` uses a restricted resolver: dotted path lookups only. No function calls, no arrow functions, no expressions. Compute in `renderVals()`. |
+| **Design Component template engine** | `{{ }}` expressions silently do nothing | `public/index.html` uses a restricted resolver: dotted path lookups only. No function calls, no arrow functions, no expressions. Compute in `renderVals()`. |
+| **The site must live in its own directory** | `wrangler deploy` fails with "Could not detect a directory containing static files" | The repo root holds `backend/` too, and wrangler will not guess. `wrangler.jsonc` points at `public/`, which also keeps the Python service unpublished. |
 
 ---
 

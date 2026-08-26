@@ -1,0 +1,24 @@
+{
+  // Cloudflare deploys the landing page from this repository with
+  // `npx wrangler deploy`. Without this file wrangler has to guess which
+  // directory holds the site, and it cannot: the root also carries backend/,
+  // which is a Python service and must never be published.
+  //
+  // `name` has to match the existing Worker the domain is attached to. A
+  // different name here silently creates a SECOND Worker, deploys the site to
+  // that one, and leaves glisteringmelon.org pointing at the old one.
+  "name": "glistering-melon",
+  "compatibility_date": "2026-08-26",
+
+  // Assets only — there is no Worker script. Everything under public/ is
+  // served as static files, and nothing outside it is uploaded, so backend/
+  // stays private without needing an ignore list.
+  "assets": {
+    "directory": "./public",
+
+    // The landing page is public/index.html, so "/" serves it directly. It is
+    // the only page here; anything else is a mistyped URL and should land on
+    // the page rather than on a bare 404.
+    "not_found_handling": "single-page-application"
+  }
+}
