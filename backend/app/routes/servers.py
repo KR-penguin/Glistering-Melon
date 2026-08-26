@@ -9,25 +9,35 @@ from app.ratelimit import is_rate_limited
 
 router = APIRouter()
 
+# What the one-button flow opens when the page does not name a plan. The
+# cheapest tier, so an unattended click can never commit someone to 49,000원.
+DEFAULT_TIER = "small"
+
 
 class CreateServerRequest(BaseModel):
-    nickname: str
-    # Optional: nothing is emailed to customers. Kept only so the operator has
-    # a way to reach someone whose payment cannot be matched — support
-    # otherwise runs through Discord.
+    # Both of these are optional because opening a server asks for nothing:
+    # the customer presses one button and the server starts. A name and an
+    # address arrive later, if they sign in with Google to keep the server.
+    # Kept accepted rather than removed so the operator still has somewhere to
+    # put a contact for a deposit that cannot be matched.
+    nickname: str | None = None
     email: EmailStr | None = None
-    tier: str
+    tier: str = DEFAULT_TIER
     modpack_key: str | None = None
 
     @field_validator("nickname")
     @classmethod
-    def nickname_shape(cls, v: str) -> str:
+    def nickname_shape(cls, v: str | None) -> str | None:
         # Any name the customer wants to be called, not a Minecraft account —
         # so Korean names and one-character handles have to pass. Minecraft's
         # own 3-16 ASCII rule would reject "김철수".
+        if v is None:
+            return None
         v = v.strip()
-        if not (1 <= len(v) <= 20):
-            raise ValueError("이름은 1-20자여야 합니다.")
+        if not v:
+            return None
+        if len(v) > 20:
+            raise ValueError("이름은 20자 이하여야 합니다.")
         return v
 
     @field_validator("tier")
@@ -67,8 +77,11 @@ async def create_server(payload: CreateServerRequest, request: Request):
     # The name is what to call the customer, so an unrecognised one is fine and
     # must not block signup. But when it DOES happen to be a real Java account
     # we can make them operator of their own server, so it is still worth one
-    # lookup.
-    mc_username = payload.nickname if await is_valid_java_username(payload.nickname) else None
+    # lookup. No name means no lookup and no OPS — never let an unverified
+    # name become operator.
+    mc_username = None
+    if payload.nickname and await is_valid_java_username(payload.nickname):
+        mc_username = payload.nickname
 
     result = await provisioning.submit_application(
         nickname=payload.nickname,

@@ -145,8 +145,11 @@
   }
 
   function renderStatus(d) {
-    $('who').textContent = d.nickname + '님의';
-    document.title = d.nickname + '님의 서버 · Glistering Melon';
+    // Opening a server asks for no name, so this is usually empty until the
+    // customer signs in with Google. The markup already says "내 서버".
+    const who = d.nickname ? d.nickname + '님의' : '내';
+    $('who').textContent = who;
+    document.title = who + ' 서버 · Glistering Melon';
     renderSupport(d.support_url);
     // Only offered once the server is actually up — the whole point of the
     // flow is that opening a server needs no signup.

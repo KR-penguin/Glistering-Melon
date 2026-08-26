@@ -81,7 +81,7 @@
       const row = document.createElement('div');
       row.className = 'row';
       const left = document.createElement('div');
-      left.innerHTML = '<span class="dot ' + cls + '"></span><strong>' + s.nickname + '</strong> ' +
+      left.innerHTML = '<span class="dot ' + cls + '"></span><strong>' + (s.nickname || '내 서버') + '</strong> ' +
         '<span class="hint">' + (TIER[s.tier] || s.tier) + ' · ' + s.status +
         (s.payment_status === 'paid' ? '' : ' · 입금 대기') + '</span>';
       const link = document.createElement('a');

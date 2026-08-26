@@ -100,7 +100,8 @@
       const suspended = r.status === 'suspended';
       tr.innerHTML =
         '<td class="code">' + r.payment_code + '</td>' +
-        '<td>' + r.nickname + '</td>' +
+        // Empty unless the customer signed in with Google; the code identifies them.
+        '<td>' + (r.nickname || '<span class="muted">이름 미등록</span>') + '</td>' +
         '<td>' + (TIER[r.tier] || r.tier) + '</td>' +
         '<td>' + (r.price_krw ? r.price_krw.toLocaleString('ko-KR') + '원' : '—') + '</td>' +
         '<td>' + (suspended ? '정지됨' : '실행 중') + (r.grace_extended ? ' <span class="muted">(연장됨)</span>' : '') + '</td>' +
@@ -141,7 +142,7 @@
     rows.forEach((r) => {
       const tr = document.createElement('tr');
       tr.innerHTML =
-        '<td>' + r.nickname + '</td>' +
+        '<td>' + (r.nickname || '<span class="muted">이름 미등록</span>') + '</td>' +
         '<td>' + (TIER[r.tier] || r.tier) + '</td>' +
         '<td class="muted">' + r.mc_version + '</td>' +
         '<td class="muted">' + (r.modpack_key || '—') + '</td>' +

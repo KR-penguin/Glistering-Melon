@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timezone
 
 from agent.rcon_client import wait_until_ready
-from app import billing, capacity, discord_notify, docker_ctl
+from app import billing, capacity, discord_notify, docker_ctl, naming
 from app.config import settings
 from app.db import get_connection
 
@@ -20,7 +20,7 @@ def _now() -> str:
 
 
 async def submit_application(
-    nickname: str, email: str, tier: str, modpack_key: str | None,
+    nickname: str | None, email: str | None, tier: str, modpack_key: str | None,
     mc_username: str | None = None,
 ) -> dict:
     conn = get_connection()
@@ -42,7 +42,9 @@ async def submit_application(
                     "UPDATE applications SET status='no_capacity' WHERE id=?", (application_id,)
                 )
                 conn.commit()
-                await discord_notify.notify_capacity_alert(nickname, tier)
+                await discord_notify.notify_capacity_alert(
+                    naming.subject_for_name(nickname), tier
+                )
                 return {"status": "no_capacity", "application_id": application_id}
 
             server_id = str(uuid.uuid4())
@@ -64,7 +66,10 @@ async def submit_application(
                 (
                     server_id,
                     application_id,
-                    nickname,
+                    # servers.nickname stays NOT NULL — that table carries live
+                    # customer data and is not worth rebuilding for this. Empty
+                    # means "not given"; app/naming.py owns how that renders.
+                    nickname or "",
                     tier,
                     spec["ram_mb"],
                     spec["storage_gb"],
@@ -146,14 +151,14 @@ async def _provision_background(server_id: str) -> None:
             # to already shows the address, price and deposit code, and polls
             # its own status.
             await discord_notify.notify_provisioned(
-                row["nickname"], row["container_name"], row["game_port"]
+                naming.owner_label(row), row["container_name"], row["game_port"]
             )
         except Exception as exc:
             logger.exception("provisioning failed for server %s", server_id)
             conn.execute("UPDATE servers SET status='error' WHERE id=?", (server_id,))
             conn.commit()
             await discord_notify.notify_provision_failed(
-                row["nickname"], row["container_name"], str(exc)
+                naming.owner_label(row), row["container_name"], str(exc)
             )
     finally:
         conn.close()

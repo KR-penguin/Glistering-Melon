@@ -29,7 +29,7 @@ import secrets
 import sqlite3
 from datetime import datetime, timedelta, timezone
 
-from app import discord_notify, docker_ctl
+from app import discord_notify, docker_ctl, naming
 from app.config import settings
 from app.db import get_connection
 
@@ -145,7 +145,7 @@ async def mark_paid(payment_code: str) -> dict:
                 "ok": True,
                 "already_paid": True,
                 "nickname": row["nickname"],
-                "message": f"{row['nickname']}님 서버는 이미 입금 확인된 상태입니다.",
+                "message": f"{naming.owner_label(row)} 서버는 이미 입금 확인된 상태입니다.",
             }
 
         conn.execute(
@@ -167,7 +167,7 @@ async def mark_paid(payment_code: str) -> dict:
                     "ok": True,
                     "restarted": False,
                     "nickname": row["nickname"],
-                    "message": f"{row['nickname']}님 입금은 확인했지만 서버 재시작에 실패했습니다. 직접 확인이 필요합니다.",
+                    "message": f"{naming.owner_label(row)} 입금은 확인했지만 서버 재시작에 실패했습니다. 직접 확인이 필요합니다.",
                 }
 
         return {
@@ -175,9 +175,9 @@ async def mark_paid(payment_code: str) -> dict:
             "restarted": restarted,
             "nickname": row["nickname"],
             "message": (
-                f"{row['nickname']}님 입금 확인 완료. 정지됐던 서버를 다시 켰습니다."
+                f"{naming.owner_label(row)} 입금 확인 완료. 정지됐던 서버를 다시 켰습니다."
                 if restarted
-                else f"{row['nickname']}님 입금 확인 완료."
+                else f"{naming.owner_label(row)} 입금 확인 완료."
             ),
         }
     finally:
@@ -203,7 +203,7 @@ async def request_extension(session_token: str) -> dict:
 
         if row["grace_extended"]:
             await discord_notify.notify_payment_claim(
-                row["nickname"], row["payment_code"], row["price_krw"], repeat=True
+                naming.owner_label(row), row["payment_code"], row["price_krw"], repeat=True
             )
             return {
                 "ok": False,
@@ -230,7 +230,7 @@ async def request_extension(session_token: str) -> dict:
                 logger.exception("failed to restart %s on extension", row["container_name"])
 
         await discord_notify.notify_payment_claim(
-            row["nickname"], row["payment_code"], row["price_krw"], repeat=False
+            naming.owner_label(row), row["payment_code"], row["price_krw"], repeat=False
         )
         return {
             "ok": True,
@@ -276,7 +276,7 @@ async def sweep_overdue() -> int:
             # The customer is not emailed: they find out from the session page
             # (status + countdown) or by asking in the support Discord.
             await discord_notify.notify_payment_expired(
-                row["nickname"], row["payment_code"], row["price_krw"]
+                naming.owner_label(row), row["payment_code"], row["price_krw"]
             )
         return stopped
     finally:

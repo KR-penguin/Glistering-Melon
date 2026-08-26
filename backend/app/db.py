@@ -5,10 +5,13 @@ from pathlib import Path
 from app.config import settings
 
 SCHEMA = """
+-- nickname and email are nullable: opening a server asks for nothing at all,
+-- so an application starts anonymous and only gets a name and an address if
+-- the customer later signs in with Google.
 CREATE TABLE IF NOT EXISTS applications (
     id TEXT PRIMARY KEY,
-    nickname TEXT NOT NULL,
-    email TEXT NOT NULL,
+    nickname TEXT,
+    email TEXT,
     tier TEXT NOT NULL,
     modpack_key TEXT,
     status TEXT NOT NULL DEFAULT 'received',
@@ -32,10 +35,14 @@ CREATE TABLE IF NOT EXISTS servers (
     created_at TEXT NOT NULL
 );
 
+-- password_hash is nullable because accounts are created by signing in with
+-- Google, which never produces one. It stays in the schema so any account
+-- made before the switch still resolves.
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     email TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
+    password_hash TEXT,
+    google_sub TEXT UNIQUE,
     created_at TEXT NOT NULL
 );
 
@@ -69,6 +76,41 @@ _ADDED_COLUMNS = {
         # The name only when it is a real Java account; null otherwise.
         ("mc_username", "TEXT"),
     ],
+    "users": [
+        # Google's stable subject id. ALTER TABLE cannot add a UNIQUE column,
+        # so uniqueness is enforced by the index in _INDEXES instead.
+        ("google_sub", "TEXT"),
+    ],
+}
+
+# Tables whose NOT NULL constraints were relaxed after the first deploy.
+# SQLite cannot drop a NOT NULL in place — the only supported route is to
+# rebuild the table and copy the rows across. Each entry is the table's
+# current target definition, and the rebuild only fires when the live table
+# still disagrees, so this is a no-op on an already-migrated database.
+_RELAXED = {
+    "applications": (
+        ("nickname", "email"),
+        """CREATE TABLE applications__new (
+            id TEXT PRIMARY KEY,
+            nickname TEXT,
+            email TEXT,
+            tier TEXT NOT NULL,
+            modpack_key TEXT,
+            status TEXT NOT NULL DEFAULT 'received',
+            created_at TEXT NOT NULL
+        )""",
+    ),
+    "users": (
+        ("password_hash",),
+        """CREATE TABLE users__new (
+            id TEXT PRIMARY KEY,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT,
+            google_sub TEXT UNIQUE,
+            created_at TEXT NOT NULL
+        )""",
+    ),
 }
 
 _INDEXES = [
@@ -76,6 +118,7 @@ _INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_servers_payment_code ON servers(payment_code)",
     "CREATE INDEX IF NOT EXISTS idx_servers_payment_status ON servers(payment_status)",
     "CREATE INDEX IF NOT EXISTS idx_servers_user ON servers(user_id)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users(google_sub)",
 ]
 
 
@@ -85,6 +128,47 @@ def _ensure_columns(conn: sqlite3.Connection) -> None:
         for name, decl in columns:
             if name not in existing:
                 conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
+
+
+def _relax_not_null(conn: sqlite3.Connection) -> None:
+    """Drop NOT NULL from columns that became optional, by rebuilding.
+
+    Foreign keys are suspended for the swap: servers.application_id references
+    applications(id), so dropping the old table would otherwise be refused.
+    They go straight back on, and foreign_key_check runs before the change is
+    kept — a rebuild that orphaned a server would be a silent data fault, and
+    this is the one moment it could happen.
+    """
+    for table, (columns, create_sql) in _RELAXED.items():
+        info = {row["name"]: row for row in conn.execute(f"PRAGMA table_info({table})")}
+        if not any(name in info and info[name]["notnull"] for name in columns):
+            continue
+
+        conn.commit()
+        conn.execute("PRAGMA foreign_keys=OFF")
+        try:
+            conn.execute(create_sql)
+            # Only columns present on both sides: the old table predates
+            # whatever _ensure_columns has since added.
+            new_columns = [
+                row["name"] for row in conn.execute(f"PRAGMA table_info({table}__new)")
+            ]
+            shared = ", ".join(name for name in new_columns if name in info)
+            conn.execute(f"INSERT INTO {table}__new ({shared}) SELECT {shared} FROM {table}")
+            conn.execute(f"DROP TABLE {table}")
+            conn.execute(f"ALTER TABLE {table}__new RENAME TO {table}")
+
+            violations = conn.execute("PRAGMA foreign_key_check").fetchall()
+            if violations:
+                raise RuntimeError(f"rebuilding {table} would orphan {len(violations)} row(s)")
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            conn.execute(f"DROP TABLE IF EXISTS {table}__new")
+            conn.commit()
+            raise
+        finally:
+            conn.execute("PRAGMA foreign_keys=ON")
 
 
 def get_connection() -> sqlite3.Connection:
@@ -105,6 +189,9 @@ def apply_schema(conn: sqlite3.Connection) -> None:
     """
     conn.executescript(SCHEMA)
     _ensure_columns(conn)
+    # After the columns exist, so a rebuild carries them across rather than
+    # dropping them and letting _ensure_columns re-add them empty.
+    _relax_not_null(conn)
     for statement in _INDEXES:
         conn.execute(statement)
     conn.commit()

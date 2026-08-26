@@ -40,7 +40,7 @@
     <sc-if value="{{ showLogin }}" hint-placeholder-val="{{ true }}">
     <a href="{{ loginUrl }}" style="white-space: nowrap;">로그인</a>
     </sc-if>
-    <button type="button" class="btn btn-primary" onClick="{{ openModal }}">1분 만에 서버 열기</button>
+    <button type="button" class="btn btn-primary" onClick="{{ startDefault }}" disabled="{{ creating }}">{{ heroLabel }}</button>
   </nav>
 
   <div style="max-width: 1200px; margin: 0 auto; padding: 0 clamp(20px, 5vw, 72px);">
@@ -55,7 +55,7 @@
 서버 이름만 적으면 세팅 완료. 관리는 AI가, 회선은 창원에서.
       </p>
       <div style="display: flex; gap: var(--space-3); flex-wrap: wrap; margin-top: 28px;">
-        <button type="button" class="btn btn-primary" onClick="{{ openModal }}">1분 만에 서버 열기</button>
+        <button type="button" class="btn btn-primary" onClick="{{ startDefault }}" disabled="{{ creating }}">{{ heroLabel }}</button>
         <button type="button" class="btn btn-ghost">요금 보기</button>
       </div>
       <sc-if value="{{ hasAccount }}" hint-placeholder-val="{{ false }}">
@@ -161,21 +161,21 @@
             <td>1 – 4명</td>
             <td>2GB / 15GB</td>
             <td style="font-feature-settings: 'tnum' 1;">4,900원</td>
-            <td><button type="button" class="btn btn-ghost" onClick="{{ openModal }}">시작</button></td>
+            <td><button type="button" class="btn btn-ghost" onClick="{{ startSmall }}" disabled="{{ creating }}">시작</button></td>
           </tr>
           <tr>
             <td style="font-weight: 700;">친구들 <span class="tag tag-accent" style="margin-left: 8px;">추천</span></td>
             <td>5 – 12명</td>
             <td>6GB / 50GB</td>
             <td style="font-feature-settings: 'tnum' 1;">11,900원</td>
-            <td><button type="button" class="btn btn-primary" onClick="{{ openModal }}">시작</button></td>
+            <td><button type="button" class="btn btn-primary" onClick="{{ startFriends }}" disabled="{{ creating }}">시작</button></td>
           </tr>
           <tr>
             <td style="font-weight: 700;">커뮤니티</td>
             <td>13 – 40명</td>
             <td>16GB / 150GB</td>
             <td style="font-feature-settings: 'tnum' 1;">49,000원</td>
-            <td><button type="button" class="btn btn-ghost" onClick="{{ openModal }}">시작</button></td>
+            <td><button type="button" class="btn btn-ghost" onClick="{{ startCommunity }}" disabled="{{ creating }}">시작</button></td>
           </tr>
         </tbody>
       </table>
@@ -201,53 +201,24 @@
     </footer>
   </div>
 
-  <sc-if value="{{ modalOpen }}" hint-placeholder-val="{{ false }}">
-  <div class="dialog-backdrop" style="z-index: 1000;" onClick="{{ closeModal }}">
-    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="gm-dialog-title" onClick="{{ stopClick }}">
+  <sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}">
+  <div class="dialog-backdrop" style="z-index: 1000;">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="gm-dialog-title">
 
-      <sc-if value="{{ formVisible }}" hint-placeholder-val="{{ true }}">
-      <form onSubmit="{{ handleSubmit }}" style="display: flex; flex-direction: column; gap: var(--space-3);">
-        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
-          <h3 id="gm-dialog-title" class="dialog-title kr-h" style="margin: 0;">서버 열기</h3>
-          <button type="button" class="btn btn-icon btn-ghost" onClick="{{ closeModal }}" aria-label="닫기" style="margin: -6px -6px 0 0; justify-content: center; padding: 0;">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 3L13 13M13 3L3 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-          </button>
-        </div>
-
-        <div class="field">
-          <label for="gm-nickname">이름 <span class="text-muted" style="font-weight: 400;">(닉네임 가능)</span></label>
-          <input id="gm-nickname" class="input" type="text" required placeholder="어떻게 불러드릴까요?" value="{{ nickname }}" onChange="{{ setNickname }}">
-        </div>
-
-        <div class="field">
-          <label for="gm-email">이메일</label>
-          <input id="gm-email" class="input" type="email" required placeholder="you@example.com" value="{{ email }}" onChange="{{ setEmail }}">
-        </div>
-
-        <div class="field">
-          <label for="gm-tier">플랜</label>
-          <select id="gm-tier" class="input" value="{{ tier }}" onChange="{{ setTier }}">
-            <option value="small">소규모 · 1–4명 · 2GB · 월 4,900원</option>
-            <option value="friends">친구들 · 5–12명 · 6GB · 월 11,900원</option>
-            <option value="community">커뮤니티 · 13–40명 · 16GB · 월 49,000원</option>
-          </select>
-        </div>
-
-        <sc-if value="{{ createError }}" hint-placeholder-val="{{ false }}">
-        <p class="dialog-body" style="margin: 0; color: var(--color-accent-800);">{{ createError }}</p>
-        </sc-if>
-
-        <div class="dialog-actions">
-          <button type="button" class="btn btn-secondary" onClick="{{ closeModal }}">취소</button>
-          <button type="submit" class="btn btn-primary" disabled="{{ creating }}">{{ submitLabel }}</button>
-        </div>
-      </form>
+      <sc-if value="{{ creating }}" hint-placeholder-val="{{ true }}">
+      <div style="display: flex; flex-direction: column; gap: var(--space-3);">
+        <h3 id="gm-dialog-title" class="dialog-title kr-h" style="margin: 0;">서버를 여는 중</h3>
+        <p class="dialog-body" style="margin: 0;">관리 페이지로 이동합니다. 서버가 준비되기까지 1분 정도 걸려요.</p>
+      </div>
       </sc-if>
 
-      <sc-if value="{{ submitted }}" hint-placeholder-val="{{ false }}">
+      <sc-if value="{{ createError }}" hint-placeholder-val="{{ false }}">
       <div style="display: flex; flex-direction: column; gap: var(--space-3);">
-        <h3 class="dialog-title kr-h" style="margin: 0;">서버를 여는 중</h3>
-        <p class="dialog-body" style="margin: 0;">관리 페이지로 이동합니다. 서버가 준비되기까지 1분 정도 걸려요.</p>
+        <h3 id="gm-dialog-title" class="dialog-title kr-h" style="margin: 0;">서버를 열지 못했어요</h3>
+        <p class="dialog-body" style="margin: 0; color: var(--color-accent-800);">{{ createError }}</p>
+        <div class="dialog-actions">
+          <button type="button" class="btn btn-secondary" onClick="{{ dismissError }}">닫기</button>
+        </div>
       </div>
       </sc-if>
 
@@ -268,27 +239,28 @@ const BACKEND_URL = 'http://192.168.45.100:8000';
 // to be a place to sort that out with a human.
 const SUPPORT_URL = 'https://discord.gg/FFUJpmxrh';
 
+// What the hero button opens. The cheapest plan on purpose — one click with
+// no form should never commit someone to the 49,000원 tier. Must match
+// DEFAULT_TIER in app/routes/servers.py.
+const DEFAULT_TIER = 'small';
+
 class Component extends DCLogic {
   constructor(props) {
     super(props);
     this.state = {
-      modalOpen: false,
-      nickname: '',
-      email: '',
-      tier: 'friends',
       creating: false,
       createError: '',
-      submitted: false,
       savedSession: '',
       authServers: null,
     };
-    this.openModal = this.openModal.bind(this);
-    this.closeModal = this.closeModal.bind(this);
-    this.setNickname = this.setNickname.bind(this);
-    this.setEmail = this.setEmail.bind(this);
-    this.setTier = this.setTier.bind(this);
-    this.handleSubmit = this.handleSubmit.bind(this);
-    this.stopClick = this.stopClick.bind(this);
+    // One bound starter per plan. The template resolver does dotted lookups
+    // only — no calls and no arrow functions — so the plan has to be baked
+    // into the handler here rather than passed at the click site.
+    this.startDefault = this.start.bind(this, DEFAULT_TIER);
+    this.startSmall = this.start.bind(this, 'small');
+    this.startFriends = this.start.bind(this, 'friends');
+    this.startCommunity = this.start.bind(this, 'community');
+    this.dismissError = this.dismissError.bind(this);
     this.goToSession = this.goToSession.bind(this);
   }
   componentDidMount() {
@@ -320,40 +292,25 @@ class Component extends DCLogic {
       })
       .catch(() => { /* backend unreachable — leave the page as-is */ });
   }
-  openModal() {
-    this.setState({ modalOpen: true, createError: '' });
-  }
-  closeModal() {
-    if (this.state.creating) return;
-    this.setState({ modalOpen: false, createError: '', submitted: false });
-  }
-  setNickname(e) {
-    this.setState({ nickname: e.target.value });
-  }
-  setEmail(e) {
-    this.setState({ email: e.target.value });
-  }
-  setTier(e) {
-    this.setState({ tier: e.target.value });
+  dismissError() {
+    this.setState({ createError: '' });
   }
   goToSession() {
     if (this.state.savedSession) {
       window.location.href = BACKEND_URL + '/session/' + this.state.savedSession;
     }
   }
-  handleSubmit(e) {
-    e.preventDefault();
+  start(tier) {
+    // No form: pressing the button IS the whole signup. The server opens
+    // anonymously and only gets a name and an address if the customer later
+    // signs in with Google to keep it.
     if (this.state.creating) return;
     this.setState({ creating: true, createError: '' });
 
     fetch(BACKEND_URL + '/api/servers', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        nickname: this.state.nickname,
-        email: this.state.email,
-        tier: this.state.tier,
-      }),
+      body: JSON.stringify({ tier: tier }),
     })
       .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
       .then((result) => {
@@ -362,15 +319,11 @@ class Component extends DCLogic {
           throw new Error(typeof detail === 'string' ? detail : '서버를 열지 못했어요.');
         }
         try { localStorage.setItem('gm_session_token', result.data.session_token); } catch (err) {}
-        this.setState({ submitted: true });
         window.location.href = result.data.session_url;
       })
       .catch((err) => {
         this.setState({ creating: false, createError: err.message || '연결에 실패했어요. 잠시 후 다시 시도해주세요.' });
       });
-  }
-  stopClick(e) {
-    e.stopPropagation();
   }
   renderVals() {
     const servers = this.state.authServers;
@@ -392,22 +345,17 @@ class Component extends DCLogic {
       // Only offer a bare login link when there is no account link to show.
       showLogin: !(signedIn && servers.length > 0),
       showReturnLink: !(signedIn && servers.length > 0) && !!this.state.savedSession,
-      modalOpen: this.state.modalOpen,
-      submitted: this.state.submitted,
-      formVisible: !this.state.submitted,
-      nickname: this.state.nickname,
-      email: this.state.email,
-      tier: this.state.tier,
+      // The overlay is the only thing the click produces now: progress, then
+      // a redirect, or an error to dismiss.
+      busy: this.state.creating || !!this.state.createError,
       creating: this.state.creating,
       createError: this.state.createError,
-      submitLabel: this.state.creating ? '여는 중…' : '서버 열기',
-      openModal: this.openModal,
-      closeModal: this.closeModal,
-      setNickname: this.setNickname,
-      setEmail: this.setEmail,
-      setTier: this.setTier,
-      handleSubmit: this.handleSubmit,
-      stopClick: this.stopClick,
+      heroLabel: this.state.creating ? '여는 중…' : '1분 만에 서버 열기',
+      startDefault: this.startDefault,
+      startSmall: this.startSmall,
+      startFriends: this.startFriends,
+      startCommunity: this.startCommunity,
+      dismissError: this.dismissError,
       goToSession: this.goToSession,
     };
   }
