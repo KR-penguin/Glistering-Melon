@@ -30,21 +30,14 @@ class Settings(BaseSettings):
             return cls.model_fields[info.field_name].default
         return v
 
-    # Gemini, reached one of two ways. Whichever is configured, the model and
-    # every line of agent code is identical — only how the client authenticates
-    # differs, so this is a reversible choice, not an architectural one.
+    # Gemini on Vertex AI. Vertex authenticates with Application Default
+    # Credentials, not an API key — GOOGLE_APPLICATION_CREDENTIALS points at a
+    # service-account file, so nothing secret belongs in these three values.
     #
-    #   GEMINI_API_KEY          the Gemini Developer API. One key from Google
-    #                           AI Studio, no cloud project, has a free tier.
-    #   GOOGLE_CLOUD_PROJECT    Vertex AI. Needs a GCP project with billing and
-    #                           a service-account file at
-    #                           GOOGLE_APPLICATION_CREDENTIALS. Bills through
-    #                           GCP, which is the point for a registered
-    #                           business.
-    #
-    # The key wins if both are set, because it is the one that can be tried in
-    # a minute — an explicit setting beats a half-finished cloud project.
-    gemini_api_key: str = ""
+    # The Gemini Developer API would also reach these models with a single key
+    # and no cloud project. It is deliberately not wired up: billing has to
+    # land on the GCP invoice for the business, and a second way in would be a
+    # second way to end up on a personal card by accident.
     google_cloud_project: str = ""
     google_cloud_location: str = "global"
     gemini_model: str = "gemini-3.7-flash"

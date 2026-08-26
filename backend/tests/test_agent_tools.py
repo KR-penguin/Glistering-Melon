@@ -19,8 +19,7 @@ from app.db import SCHEMA
 
 
 requires_llm = pytest.mark.skipif(
-    not (settings.gemini_api_key or settings.google_cloud_project),
-    reason="neither GEMINI_API_KEY nor GOOGLE_CLOUD_PROJECT is set",
+    not settings.google_cloud_project, reason="GOOGLE_CLOUD_PROJECT not set"
 )
 
 

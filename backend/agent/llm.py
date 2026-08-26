@@ -27,6 +27,7 @@ holds no matter which model runs or what it decides.
 
 import json
 import logging
+import os
 import re
 from dataclasses import dataclass, field
 from typing import Any
@@ -86,40 +87,28 @@ def _loads_lenient(raw: Any) -> dict:
     return {}
 
 
-class GeminiProvider:
-    """Gemini via the google-genai SDK, over either of its two backends.
+class VertexGeminiProvider:
+    """Gemini on Vertex AI, via the google-genai SDK.
 
-    Only the constructor differs between them — same models, same request
-    shape, same responses — so everything below this line is shared and the
-    choice stays a deployment detail.
-
-    Vertex authenticates with Application Default Credentials (a
-    service-account file at GOOGLE_APPLICATION_CREDENTIALS), so there is no
-    key in .env at all. The Developer API authenticates with one key and
-    needs no cloud project.
+    Vertex authenticates with Application Default Credentials rather than an
+    API key: in the container that means a service-account JSON at
+    GOOGLE_APPLICATION_CREDENTIALS. There is no key in .env to leak — and no
+    second, keyed way in, so the spend cannot quietly land somewhere other
+    than the GCP invoice.
     """
 
-    def __init__(
-        self,
-        model: str,
-        api_key: str = "",
-        project: str = "",
-        location: str = "global",
-    ):
+    name = "vertex-gemini"
+
+    def __init__(self, project: str, location: str, model: str):
         from google import genai
 
-        if api_key:
-            self.name = "gemini-api"
-            self._client = genai.Client(api_key=api_key)
-        else:
-            self.name = "vertex-gemini"
-            # The SDK renamed this flag to `enterprise` when Vertex AI
-            # generative became the Gemini Enterprise Agent Platform;
-            # `vertexai` is kept as a supported alias and is what the GCP
-            # console and every Vertex doc still call it, so it stays the more
-            # recognisable choice here. requirements.txt pins google-genai <3
-            # so the alias cannot vanish under us.
-            self._client = genai.Client(vertexai=True, project=project, location=location)
+        # The SDK renamed this flag to `enterprise` when Vertex AI generative
+        # became the Gemini Enterprise Agent Platform; `vertexai` is kept as a
+        # supported alias and is what the GCP console and every Vertex doc
+        # still call it, so it stays the more recognisable choice here.
+        # requirements.txt pins google-genai below 3 so the alias cannot
+        # vanish under us.
+        self._client = genai.Client(vertexai=True, project=project, location=location)
         self.model = model
 
     @staticmethod
@@ -231,20 +220,46 @@ class GeminiProvider:
 _provider = None
 
 
+def _credentials_complaint() -> str | None:
+    """Name the missing piece, before the SDK gets a chance not to.
+
+    Vertex fails in several ways that all surface as the same opaque ADC
+    error, and the owner debugs this alone on a home server. Checking the two
+    things we can see ourselves turns "DefaultCredentialsError" into a
+    sentence that says which file to go and look at.
+    """
+    if not settings.google_cloud_project:
+        return (
+            "GOOGLE_CLOUD_PROJECT is not set — the agent cannot run. "
+            "Add it to backend/.env and restart."
+        )
+
+    path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+    if not path:
+        return (
+            "GOOGLE_APPLICATION_CREDENTIALS is not set. docker-compose sets it "
+            "from HOST_DATA_ROOT; running outside compose, export it yourself."
+        )
+    if not os.path.isfile(path):
+        # Most likely on a first deploy, and the likeliest reason is that the
+        # key was never copied across.
+        return (
+            f"the Vertex service-account file is missing at {path}. Copy the "
+            "JSON key there — see RUNNING.md."
+        )
+    return None
+
+
 def get_provider():
     global _provider
     if _provider is None:
-        if not (settings.gemini_api_key or settings.google_cloud_project):
-            raise LLMError(
-                "Neither GEMINI_API_KEY nor GOOGLE_CLOUD_PROJECT is set — the "
-                "agent cannot run. Set one in backend/.env and restart: the key "
-                "for the Gemini Developer API, the project for Vertex AI."
-            )
-        _provider = GeminiProvider(
-            model=settings.gemini_model,
-            api_key=settings.gemini_api_key,
-            project=settings.google_cloud_project,
-            location=settings.google_cloud_location,
+        complaint = _credentials_complaint()
+        if complaint:
+            raise LLMError(complaint)
+        _provider = VertexGeminiProvider(
+            settings.google_cloud_project,
+            settings.google_cloud_location,
+            settings.gemini_model,
         )
     return _provider
 

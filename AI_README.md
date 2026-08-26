@@ -212,13 +212,17 @@ Every one of these cost real debugging time.
 1. **Google credentials are not set yet.** The code is written and tested, but
    nothing here has ever run against real Google infrastructure.
 
-   The agent reaches Gemini either way, and the choice is one env var:
-   `GEMINI_API_KEY` (Gemini Developer API — one key from AI Studio, no cloud
-   project, free tier) or `GOOGLE_CLOUD_PROJECT` (Vertex AI — needs a GCP
-   project with billing plus a service account at
-   `/srv/minecraft/data/gcp-credentials.json`, and bills through GCP, which is
-   why a registered business wants it). The key wins if both are set. Sign-in
-   separately needs `GOOGLE_OAUTH_CLIENT_ID` / `_SECRET`.
+   The agent needs `GOOGLE_CLOUD_PROJECT` plus a service account with the
+   *Vertex AI User* role, whose JSON key sits at
+   `/srv/minecraft/data/gcp-credentials.json`. Sign-in separately needs
+   `GOOGLE_OAUTH_CLIENT_ID` / `_SECRET`.
+
+   The keyed Gemini Developer API reaches the same models with no cloud
+   project at all, and was deliberately not wired up: the owner runs a
+   registered business and the spend has to land on the GCP invoice, so a
+   second, keyed way in would only be a way to end up on a personal card by
+   accident. `agent/llm.py::_credentials_complaint` names whichever piece is
+   missing, because ADC reports every one of these failures identically.
 
    Until then the agent returns its "not configured" message and sign-in 503s;
    provisioning, the payment timer and /admin all keep working. **`GEMINI_MODEL`

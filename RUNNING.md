@@ -85,43 +85,33 @@ ssh sean@192.168.45.100 "grep ^ADMIN_TOKEN= /home/sean/glistering-melon/backend/
 지금은 **AI 매니저와 로그인만** 이 설정을 기다리고 있습니다. 서버 개통, 입금
 타이머, 관리자 페이지는 설정 없이도 그대로 돌아갑니다.
 
-### 1. Gemini (AI 매니저)
-
-두 가지 방법이 있습니다. **모델도 코드도 똑같고, 인증 방식만 다릅니다** —
-나중에 바꾸는 것도 환경변수 하나입니다.
-
-**A. 제일 빠른 길 — Gemini API 키** (클라우드 프로젝트 불필요, 무료 한도 있음)
-
-https://aistudio.google.com/apikey 에서 키를 발급받아 `.env` 에:
-
-```
-GEMINI_API_KEY=발급받은-키
-GEMINI_MODEL=gemini-3.7-flash
-```
-
-이걸로 끝입니다. 아래 B는 건너뛰셔도 됩니다.
-
-**B. Vertex AI** (사업자 GCP 청구로 처리하고 싶을 때)
+### 1. Vertex AI (AI 매니저)
 
 Vertex는 Google Cloud 제품이라 **GCP 프로젝트가 반드시 필요합니다.** 대신
-결제가 GCP로 잡혀서 사업자 지출로 처리됩니다.
+결제가 GCP 청구서로 잡혀서 사업자 지출로 처리됩니다.
 
-Google Cloud 콘솔에서:
+**① 프로젝트와 API**
 
-1. 프로젝트를 만들고 **Vertex AI API**를 켭니다.
-2. 서비스 계정을 만들고 **Vertex AI User** 역할을 줍니다.
-3. 그 계정의 JSON 키를 내려받아 서버의
-   `/srv/minecraft/data/gcp-credentials.json` 에 둡니다:
+[console.cloud.google.com](https://console.cloud.google.com) 에서:
+
+1. 프로젝트를 만들고 **결제 계정을 연결**합니다 (결제 연결 안 하면 호출이 거부됩니다).
+2. **Vertex AI API** 를 사용 설정합니다.
+
+**② 서비스 계정 키**
+
+**IAM 및 관리자 → 서비스 계정**에서 계정을 하나 만들고 **Vertex AI User**
+(`roles/aiplatform.user`) 역할을 준 뒤, **키 → 새 키 만들기 → JSON** 으로
+받습니다. 그 파일을 서버에 올립니다:
 
 ```bash
-scp ~/Downloads/키파일.json sean@192.168.45.100:/srv/minecraft/data/gcp-credentials.json
+scp ~/Downloads/받은키.json sean@192.168.45.100:/srv/minecraft/data/gcp-credentials.json
 ```
 
 > 리포지토리 밖(`HOST_DATA_ROOT` 안)에 두는 이유가 있습니다. 그 경로는 이미
 > 컨테이너에 마운트돼 있어서 따로 마운트할 필요가 없고, 파일 하나를 직접
 > 마운트하면 파일이 없을 때 도커가 그 자리에 *디렉터리*를 만들어 버립니다.
 
-`.env` 에는 비밀이 아닌 값만 들어갑니다:
+**③ `.env`** — 여기엔 비밀이 아닌 값만 들어갑니다:
 
 ```
 GOOGLE_CLOUD_PROJECT=내-프로젝트-아이디
@@ -129,7 +119,28 @@ GOOGLE_CLOUD_LOCATION=global
 GEMINI_MODEL=gemini-3.7-flash
 ```
 
-`GEMINI_MODEL` 은 프로젝트에서 쓸 수 있는 모델로 맞춰야 합니다. 확인:
+**④ 반영**
+
+```bash
+ssh sean@192.168.45.100 "cd /home/sean/glistering-melon/backend && docker compose up -d"
+```
+
+**⑤ 확인** — 실제로 대답하는지 봅니다:
+
+```bash
+ssh sean@192.168.45.100 "docker exec gm-backend python -c \"
+import asyncio
+from agent.llm import get_provider
+async def go():
+    r = await get_provider().complete('한국어로 짧게.', [get_provider().user_turn('안녕')], [])
+    print('OK:', r.text)
+asyncio.run(go())\""
+```
+
+`OK: ...` 가 나오면 끝입니다. 안 되면 메시지가 뭐가 빠졌는지 짚어줍니다
+(프로젝트 미설정 / 키 파일 없음 / 권한 부족).
+
+`GEMINI_MODEL` 은 프로젝트에서 쓸 수 있는 모델이어야 합니다. 목록 확인:
 
 ```bash
 ssh sean@192.168.45.100 "docker exec gm-backend python -c \"
