@@ -253,8 +253,9 @@ Every one of these cost real debugging time.
    reads `MINECRAFT_DOMAIN`. What remains is the owner's — the two A records,
    the router, and the `.env` values. RUNNING.md has the table.
 
-   The house address is dynamic (KT residential). Both A records die when it
-   changes, so DDNS against the Cloudflare API is not optional for long.
+   The house address is dynamic (SK Broadband residential). Both A records
+   die when it changes, so DDNS against the Cloudflare API is not optional
+   for long.
 
 **What the AI manager actually did when reproduced** (2026-08-26, on the
 Claude provider it has since moved off):

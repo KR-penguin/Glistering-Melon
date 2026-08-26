@@ -40,7 +40,12 @@ class Settings(BaseSettings):
     # second way to end up on a personal card by accident.
     google_cloud_project: str = ""
     google_cloud_location: str = "global"
-    gemini_model: str = "gemini-3.7-flash"
+    # Confirmed present in the owner's project. Not every Gemini release
+    # reaches every Vertex project, and a model that is absent comes back as a
+    # 403 on predict rather than a 404 — indistinguishable from the missing
+    # IAM role unless you try a model you know exists. Check `models.list`
+    # before changing this.
+    gemini_model: str = "gemini-3.5-flash"
 
     # Sign in with Google. Accounts have no passwords — see app/accounts.py.
     google_oauth_client_id: str = ""
