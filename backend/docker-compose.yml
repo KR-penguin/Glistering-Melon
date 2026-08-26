@@ -17,9 +17,14 @@ services:
       - ${HOST_DATA_ROOT}:${HOST_DATA_ROOT}
       # World data, on its own disk. Same identical-path rule applies.
       - ${HOST_WORLDS_ROOT}:${HOST_WORLDS_ROOT}
+      # Vertex AI service-account key. Read-only, and never baked into the
+      # image — the Dockerfile does not COPY it, so it cannot leak through a
+      # pushed layer. Vertex has no API-key option; this file IS the credential.
+      - ./gcp-credentials.json:/srv/gcp-credentials.json:ro
     environment:
       - DATA_ROOT=${HOST_DATA_ROOT}
       - WORLDS_ROOT_OVERRIDE=${HOST_WORLDS_ROOT}
+      - GOOGLE_APPLICATION_CREDENTIALS=/srv/gcp-credentials.json
     networks:
       - gm-net
 

@@ -30,8 +30,13 @@ class Settings(BaseSettings):
             return cls.model_fields[info.field_name].default
         return v
 
-    anthropic_api_key: str = ""
-    anthropic_model: str = "claude-sonnet-5"
+    # Gemini on Vertex AI. Vertex authenticates with Application Default
+    # Credentials, not an API key — point GOOGLE_APPLICATION_CREDENTIALS at a
+    # service-account JSON and mount it into the container. Nothing secret
+    # belongs in these three values.
+    google_cloud_project: str = ""
+    google_cloud_location: str = "global"
+    gemini_model: str = "gemini-3.7-flash"
 
     discord_webhook_url: str = ""
 

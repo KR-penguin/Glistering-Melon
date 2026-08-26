@@ -63,6 +63,10 @@ class FakeProvider:
         return self.replies.pop(0)
 
     @staticmethod
+    def user_turn(text):
+        return {"role": "user", "content": text}
+
+    @staticmethod
     def assistant_turn(reply):
         return {"role": "assistant", "content": reply.text}
 
@@ -155,11 +159,85 @@ async def test_loop_gives_up_with_fallback_text(use_fake):
     assert out == "포기했어요."
 
 
-def test_missing_api_key_is_a_clear_error_not_a_crash(monkeypatch):
+def test_missing_project_is_a_clear_error_not_a_crash(monkeypatch):
     from app.config import settings
 
     llm.reset_provider()
-    monkeypatch.setattr(settings, "anthropic_api_key", "")
-    with pytest.raises(llm.LLMError, match="ANTHROPIC_API_KEY"):
+    monkeypatch.setattr(settings, "google_cloud_project", "")
+    with pytest.raises(llm.LLMError, match="GOOGLE_CLOUD_PROJECT"):
         llm.get_provider()
     llm.reset_provider()
+
+
+# --- translating our tool schemas into Gemini's shape ----------------------
+#
+# The agents keep declaring tools in one shape; only this boundary knows what
+# Gemini wants. Each test below is a request Gemini rejects outright if the
+# translation is wrong, which in production reads as "the AI manager is down".
+
+
+def test_parameterless_tool_omits_the_schema():
+    """Gemini rejects `{"type": "object", "properties": {}}` as an empty
+    declaration, and most customer tools take no arguments."""
+    declarations = llm.VertexGeminiProvider._function_declarations(
+        [{"name": "get_my_server_status", "description": "상태",
+          "input_schema": {"type": "object", "properties": {}}}]
+    )
+    assert declarations[0].name == "get_my_server_status"
+    assert declarations[0].parameters_json_schema is None
+
+
+def test_tool_with_arguments_keeps_its_schema():
+    schema = {
+        "type": "object",
+        "properties": {"command": {"type": "string"}},
+        "required": ["command"],
+    }
+    declarations = llm.VertexGeminiProvider._function_declarations(
+        [{"name": "run_command", "description": "실행", "input_schema": schema}]
+    )
+    assert declarations[0].parameters_json_schema == schema
+
+
+def test_tool_results_go_back_on_a_user_turn():
+    """Gemini carries function results on a user turn; a "tool" role is
+    rejected. The SDK's own loop does the same."""
+    call = ToolCall("c1", "get_my_server_status", {})
+    turns = llm.VertexGeminiProvider.tool_results([(call, {"running": True})])
+    assert len(turns) == 1
+    assert turns[0].role == "user"
+    assert turns[0].parts[0].function_response.name == "get_my_server_status"
+
+
+def test_all_results_for_one_turn_are_batched_together():
+    calls = [ToolCall("c1", "a", {}), ToolCall("c2", "b", {})]
+    turns = llm.VertexGeminiProvider.tool_results([(calls[0], {}), (calls[1], {})])
+    assert len(turns) == 1 and len(turns[0].parts) == 2
+
+
+def test_non_dict_tool_output_is_wrapped():
+    """`response` must be a JSON object; a bare string is a 400."""
+    turns = llm.VertexGeminiProvider.tool_results([(ToolCall("c1", "a", {}), "plain text")])
+    assert turns[0].parts[0].function_response.response == {"result": "plain text"}
+
+
+async def test_a_safety_blocked_turn_does_not_500(monkeypatch):
+    """Gemini can drop a whole turn to its safety filters, and this agent
+    talks about banning and kicking all day. That arrives as an empty
+    candidate list, not an exception."""
+
+    class Blocked:
+        candidates = []
+        function_calls = None
+
+    provider = llm.VertexGeminiProvider.__new__(llm.VertexGeminiProvider)
+
+    class FakeModels:
+        async def generate_content(self, **_):
+            return Blocked()
+
+    provider._client = type("C", (), {"aio": type("A", (), {"models": FakeModels()})()})()
+    provider.model = "gemini-3.7-flash"
+
+    reply = await provider.complete("sys", [], [])
+    assert reply.text == "" and reply.tool_calls == []

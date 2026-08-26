@@ -31,6 +31,10 @@ class CapturingProvider:
         return LLMReply(text="네, 처리했어요.")
 
     @staticmethod
+    def user_turn(text):
+        return {"role": "user", "content": text}
+
+    @staticmethod
     def assistant_turn(reply):
         return {"role": "assistant", "content": reply.text}
 

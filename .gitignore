@@ -4,3 +4,8 @@ backend/**/__pycache__/
 backend/.env
 backend/data/
 *.pyc
+
+# Vertex AI service-account key. This file IS the credential — Vertex has no
+# API-key option — so it must never be committed.
+backend/gcp-credentials.json
+*-credentials.json

@@ -19,7 +19,7 @@ from app.db import SCHEMA
 
 
 requires_llm = pytest.mark.skipif(
-    not settings.anthropic_api_key, reason="ANTHROPIC_API_KEY not set"
+    not settings.google_cloud_project, reason="GOOGLE_CLOUD_PROJECT not set"
 )
 
 
